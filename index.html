@@ -154,20 +154,16 @@ function shuffle(arr) {
 }
 
 /* ============================== BOARD GEOMETRY ============================== */
+// Modeled on the wooden "Brändi Dog" board: an octagonal ring (donut) with the
+// track running around its perimeter, a short home-lane arc curling slightly
+// inward near each color's own quarter, and an empty circular well in the
+// middle (that's just where the card deck sits, not part of the track).
 
 const CX = 400, CY = 400;
 const CELL_R = 15;
-const SQ_MIN = 110, SQ_MAX = 690; // square playing field bounds
-const CORNERS = [
-  { x: SQ_MIN, y: SQ_MIN }, // top-left    -> edge for color 0 (green)
-  { x: SQ_MAX, y: SQ_MIN }, // top-right   -> edge for color 1 (yellow)
-  { x: SQ_MAX, y: SQ_MAX }, // bottom-right-> edge for color 2 (blue)
-  { x: SQ_MIN, y: SQ_MAX }  // bottom-left -> edge for color 3 (red)
-];
-const HOME_T = [0.16, 0.40, 0.64, 0.88]; // slot 0 = near track entrance, slot 3 = deepest (last before goal)
+const OCT_MIN = 95, OCT_MAX = 705; // bounding square of the octagon
+const OCT_CUT = 0.30; // fraction of each side chamfered off at the corners
 
-function edgeStart(colorIndex) { return CORNERS[colorIndex]; }
-function edgeEnd(colorIndex) { return CORNERS[(colorIndex + 1) % 4]; }
 function lerp(a, b, t) { return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; }
 function quadBezier(p0, c, p1, t) {
   const mt = 1 - t;
@@ -176,33 +172,82 @@ function quadBezier(p0, c, p1, t) {
     y: mt * mt * p0.y + 2 * mt * t * c.y + t * t * p1.y
   };
 }
-// Each home lane loops from its entrance out toward its corner, then curves into the center —
-// echoing the looping arcs on the physical board rather than a straight spoke.
-function homeArmControlPoint(colorIndex) {
-  const entrance = edgeStart(colorIndex);
-  const center = { x: CX, y: CY };
-  const mid = lerp(entrance, center, 0.5);
-  const dx = center.x - entrance.x, dy = center.y - entrance.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const nx = -dy / len, ny = dx / len; // perpendicular
-  const bow = 95;
-  return { x: mid.x + nx * bow, y: mid.y + ny * bow };
+
+// 8 vertices of the octagon, walking clockwise from the top-left chamfer.
+const OCT_SIDE = OCT_MAX - OCT_MIN;
+const OCT_VERTS = (() => {
+  const c = OCT_CUT * OCT_SIDE;
+  return [
+    { x: OCT_MIN + c, y: OCT_MIN },
+    { x: OCT_MAX - c, y: OCT_MIN },
+    { x: OCT_MAX, y: OCT_MIN + c },
+    { x: OCT_MAX, y: OCT_MAX - c },
+    { x: OCT_MAX - c, y: OCT_MAX },
+    { x: OCT_MIN + c, y: OCT_MAX },
+    { x: OCT_MIN, y: OCT_MAX - c },
+    { x: OCT_MIN, y: OCT_MIN + c }
+  ];
+})();
+const OCT_SEG_LEN = OCT_VERTS.map((v, i) => {
+  const n = OCT_VERTS[(i + 1) % OCT_VERTS.length];
+  return Math.hypot(n.x - v.x, n.y - v.y);
+});
+const OCT_PERIM = OCT_SEG_LEN.reduce((a, b) => a + b, 0);
+const OCT_CUM = OCT_SEG_LEN.reduce((acc, len) => { acc.push((acc[acc.length - 1] || 0) + len); return acc; }, []);
+
+// Walk a fraction t (0..1) clockwise around the octagon starting at vertex 0.
+function octagonPointAtFraction(t) {
+  const target = ((t % 1) + 1) % 1 * OCT_PERIM;
+  let segIdx = 0;
+  while (segIdx < OCT_CUM.length && OCT_CUM[segIdx] < target) segIdx++;
+  const segStart = segIdx === 0 ? 0 : OCT_CUM[segIdx - 1];
+  const segT = (target - segStart) / OCT_SEG_LEN[segIdx];
+  const p0 = OCT_VERTS[segIdx], p1 = OCT_VERTS[(segIdx + 1) % OCT_VERTS.length];
+  return lerp(p0, p1, segT);
 }
+// Each color's quarter starts a bit before a "corner" of the octagon, matching
+// where the colored cluster sits on the physical board.
+function colorFraction(colorIndex, within) { return (colorIndex / 4) + (within / 4); }
+
 function trackCellPos(absIndex) {
   const c = Math.floor(absIndex / PER_COLOR);
-  const f = (absIndex % PER_COLOR) / PER_COLOR;
-  return lerp(edgeStart(c), edgeEnd(c), f);
+  const within = (absIndex % PER_COLOR) / PER_COLOR;
+  return octagonPointAtFraction(colorFraction(c, within));
 }
+function edgeStart(colorIndex) { return octagonPointAtFraction(colorFraction(colorIndex, 0)); }
+
+// Home lane: a short arc that curls slightly inward off the ring, then rejoins
+// close to where it left — it never crosses to the center like the old design.
+function homeArmControlPoint(colorIndex) {
+  const entrance = edgeStart(colorIndex);
+  const dx = CX - entrance.x, dy = CY - entrance.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const inX = dx / len, inY = dy / len; // unit vector pointing inward
+  return { x: entrance.x + inX * 95, y: entrance.y + inY * 95 };
+}
+function homeArmEnd(colorIndex) {
+  const entrance = edgeStart(colorIndex);
+  const dx = CX - entrance.x, dy = CY - entrance.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const inX = dx / len, inY = dy / len;
+  return { x: entrance.x + inX * 150, y: entrance.y + inY * 150 };
+}
+const HOME_T = [0.22, 0.48, 0.74, 1.0]; // slot 0 = near track entrance, slot 3 = deepest (last before goal)
 function homeCellPos(colorIndex, slot) {
   const entrance = edgeStart(colorIndex);
   const ctrl = homeArmControlPoint(colorIndex);
-  return quadBezier(entrance, ctrl, { x: CX, y: CY }, HOME_T[slot]);
+  const end = homeArmEnd(colorIndex);
+  return quadBezier(entrance, ctrl, end, HOME_T[slot]);
 }
 function kennelPos(colorIndex, slot) {
-  const corner = edgeStart(colorIndex);
-  const base = lerp({ x: CX, y: CY }, corner, 1.14); // push a bit past the corner, outward
-  const offsets = [[-19, -19], [19, -19], [-19, 19], [19, 19]][slot];
-  return { x: base.x + offsets[0], y: base.y + offsets[1] };
+  const entrance = edgeStart(colorIndex);
+  const dx = entrance.x - CX, dy = entrance.y - CY;
+  const len = Math.hypot(dx, dy) || 1;
+  const outX = dx / len, outY = dy / len; // unit vector pointing outward
+  const perpX = -outY, perpY = outX;
+  const base = { x: entrance.x + outX * 62, y: entrance.y + outY * 62 };
+  const grid = [[-18, -18], [18, -18], [-18, 18], [18, 18]][slot];
+  return { x: base.x + perpX * grid[0] + outX * grid[1], y: base.y + perpY * grid[0] + outY * grid[1] };
 }
 
 /* ============================== GAME RULES HELPERS ============================== */
@@ -663,9 +708,11 @@ function Board({ pieces, activePlayer }) {
   });
 
   const turnRing = (() => {
-    const corner = edgeStart(activePlayer);
-    const base = lerp({ x: CX, y: CY }, corner, 1.14);
-    return <circle cx={base.x} cy={base.y} r={46} fill="none" stroke={COLOR_HEX[COLOR_KEYS[activePlayer]]}
+    const entrance = edgeStart(activePlayer);
+    const dx = entrance.x - CX, dy = entrance.y - CY;
+    const len = Math.hypot(dx, dy) || 1;
+    const base = { x: entrance.x + (dx / len) * 55, y: entrance.y + (dy / len) * 55 };
+    return <circle cx={base.x} cy={base.y} r={38} fill="none" stroke={COLOR_HEX[COLOR_KEYS[activePlayer]]}
       strokeWidth="4" strokeDasharray="6 5" opacity="0.9">
       <animateTransform attributeName="transform" type="rotate" from={`0 ${base.x} ${base.y}`} to={`360 ${base.x} ${base.y}`} dur="6s" repeatCount="indefinite" />
     </circle>;
@@ -689,26 +736,29 @@ function Board({ pieces, activePlayer }) {
   });
 
   const armLines = COLOR_KEYS.map((ck, ci) => {
-    const a = edgeStart(ci), c = homeArmControlPoint(ci), b = { x: CX, y: CY };
+    const a = edgeStart(ci), c = homeArmControlPoint(ci), b = homeArmEnd(ci);
     return <path key={ck + 'arm'} d={`M ${a.x} ${a.y} Q ${c.x} ${c.y} ${b.x} ${b.y}`}
-      fill="none" stroke={COLOR_HEX[ck]} strokeWidth="11" strokeOpacity="0.3" strokeLinecap="round" />;
+      fill="none" stroke={COLOR_HEX[ck]} strokeWidth="14" strokeOpacity="0.28" strokeLinecap="round" />;
   });
-  const outerFrame = `${SQ_MIN - 45},${SQ_MIN - 45} ${SQ_MAX + 45},${SQ_MIN - 45} ${SQ_MAX + 45},${SQ_MAX + 45} ${SQ_MIN - 45},${SQ_MAX + 45}`;
-  const trackFrame = `${SQ_MIN},${SQ_MIN} ${SQ_MAX},${SQ_MIN} ${SQ_MAX},${SQ_MAX} ${SQ_MIN},${SQ_MAX}`;
+  const octPathOuter = 'M ' + OCT_VERTS.map(v => {
+    const dx = v.x - CX, dy = v.y - CY, len = Math.hypot(dx, dy) || 1;
+    return `${v.x + (dx / len) * 45},${v.y + (dy / len) * 45}`;
+  }).join(' L ') + ' Z';
+  const octPathTrack = 'M ' + OCT_VERTS.map(v => `${v.x},${v.y}`).join(' L ') + ' Z';
 
   return (
     <svg width="640" height="640" viewBox="0 0 800 800">
-      <rect x={SQ_MIN - 45} y={SQ_MIN - 45} width={SQ_MAX - SQ_MIN + 90} height={SQ_MAX - SQ_MIN + 90} rx="18" fill="#153d1c" />
-      <polygon points={trackFrame} fill="none" stroke="#0f2913" strokeWidth="26" />
+      <path d={octPathOuter} fill="#153d1c" />
+      <path d={octPathTrack} fill="none" stroke="#0f2913" strokeWidth="26" />
       {armLines}
       {trackCells}
       {homeCells}
       {kennelCells}
       {turnRing}
-      <rect x={CX - 55} y={CY - 55} width="110" height="110" fill="#0f2913" stroke={COLOR_HEX.green} strokeWidth="1"
-        transform={`rotate(45 ${CX} ${CY})`} />
-      <text x={CX} y={CY - 4} textAnchor="middle" fill="#e0b04a" fontSize="20" fontFamily="Georgia, serif" fontWeight="900">DOG</text>
-      <text x={CX} y={CY + 16} textAnchor="middle" fill="#cbb98a" fontSize="9">Den letzten beißen die Hunde</text>
+      <circle cx={CX} cy={CY} r="70" fill="#0f2913" stroke={COLOR_HEX.green} strokeWidth="1" />
+      <circle cx={CX} cy={CY} r="58" fill="none" stroke="#cbb98a" strokeWidth="1" strokeDasharray="3 3" opacity="0.5" />
+      <text x={CX} y={CY - 4} textAnchor="middle" fill="#e0b04a" fontSize="18" fontFamily="Georgia, serif" fontWeight="900">DOG</text>
+      <text x={CX} y={CY + 14} textAnchor="middle" fill="#cbb98a" fontSize="8">Kartenstapel</text>
       {pieceEls}
     </svg>
   );
