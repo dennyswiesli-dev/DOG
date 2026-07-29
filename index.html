@@ -178,11 +178,13 @@ function rotatePoint(p, deg, cx, cy) {
 
 // Quarter-0 (green, top-left) track path in its own local frame: R = toward
 // the next corner (right), D = toward the board's interior (down). Starts at
-// the start space (index 0) and zig-zags across to just before the next
-// color's start space (16 points total = PER_COLOR).
-const QUAD_MOVES = ['R', 'R', 'D', 'D', 'R', 'R', 'R', 'R', 'R', 'R', 'U', 'U', 'R', 'R', 'R'];
+// the start space (index 0), zig-zags away from the corner in a small
+// staircase (an "hourglass" lobe, echoing the diagram), runs straight across
+// as the waist to the next corner, then zig-zags back up to approach it.
+// 16 points total = PER_COLOR.
+const QUAD_MOVES = ['R', 'D', 'R', 'D', 'R', 'D', 'R', 'R', 'R', 'R', 'R', 'U', 'R', 'U', 'R'];
 const QUAD_STEP = 34;
-const QUAD0_START = { x: 230, y: 96 };
+const QUAD0_START = { x: 208, y: 90 };
 const DIR_VEC = { R: { x: 1, y: 0 }, L: { x: -1, y: 0 }, D: { x: 0, y: 1 }, U: { x: 0, y: -1 } };
 const QUAD0_POINTS = (() => {
   const pts = [{ x: QUAD0_START.x, y: QUAD0_START.y }];
