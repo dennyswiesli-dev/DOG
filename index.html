@@ -195,26 +195,43 @@ const OCT_SEG_LEN = OCT_VERTS.map((v, i) => {
 const OCT_PERIM = OCT_SEG_LEN.reduce((a, b) => a + b, 0);
 const OCT_CUM = OCT_SEG_LEN.reduce((acc, len) => { acc.push((acc[acc.length - 1] || 0) + len); return acc; }, []);
 
-// Walk a fraction t (0..1) clockwise around the octagon starting at vertex 0.
-function octagonPointAtFraction(t) {
-  const target = ((t % 1) + 1) % 1 * OCT_PERIM;
-  let segIdx = 0;
-  while (segIdx < OCT_CUM.length && OCT_CUM[segIdx] < target) segIdx++;
-  const segStart = segIdx === 0 ? 0 : OCT_CUM[segIdx - 1];
-  const segT = (target - segStart) / OCT_SEG_LEN[segIdx];
-  const p0 = OCT_VERTS[segIdx], p1 = OCT_VERTS[(segIdx + 1) % OCT_VERTS.length];
-  return lerp(p0, p1, segT);
+// The real board's drilled hole path is not a smooth curve or clean octagon
+// edge — it's a staircase of short straight runs, each kinked by a noticeable
+// (but not exactly 90°) turn, that only loosely approximates the octagon's
+// rounded corner. Build one quarter (16 holes) as such a staircase, then get
+// the other three by rotating it 90° at a time around the board's center.
+function rotatePoint(p, deg, cx, cy) {
+  const rad = deg * Math.PI / 180;
+  const dx = p.x - cx, dy = p.y - cy;
+  return {
+    x: cx + dx * Math.cos(rad) - dy * Math.sin(rad),
+    y: cy + dx * Math.sin(rad) + dy * Math.cos(rad)
+  };
 }
-// Each color's quarter starts a bit before a "corner" of the octagon, matching
-// where the colored cluster sits on the physical board.
-function colorFraction(colorIndex, within) { return (colorIndex / 4) + (within / 4); }
+const QUAD_RUN_LENGTHS = [5, 5, 6]; // cell counts per straight run (sums to PER_COLOR = 16)
+const QUAD_RUN_ANGLES = [-14, 16, 46]; // degrees; each run kinks ~30° from the last
+const QUAD_STEP = 33; // pixel spacing between consecutive holes
+const QUAD0_START = { x: 250, y: 128 };
+const QUAD0_POINTS = (() => {
+  const pts = [];
+  let cur = { x: QUAD0_START.x, y: QUAD0_START.y };
+  QUAD_RUN_LENGTHS.forEach((len, ri) => {
+    const rad = QUAD_RUN_ANGLES[ri] * Math.PI / 180;
+    const dx = Math.cos(rad) * QUAD_STEP, dy = Math.sin(rad) * QUAD_STEP;
+    for (let s = 0; s < len; s++) {
+      pts.push({ x: cur.x, y: cur.y });
+      cur = { x: cur.x + dx, y: cur.y + dy };
+    }
+  });
+  return pts;
+})();
 
 function trackCellPos(absIndex) {
   const c = Math.floor(absIndex / PER_COLOR);
-  const within = (absIndex % PER_COLOR) / PER_COLOR;
-  return octagonPointAtFraction(colorFraction(c, within));
+  const local = QUAD0_POINTS[absIndex % PER_COLOR];
+  return rotatePoint(local, c * 90, CX, CY);
 }
-function edgeStart(colorIndex) { return octagonPointAtFraction(colorFraction(colorIndex, 0)); }
+function edgeStart(colorIndex) { return trackCellPos(colorIndex * PER_COLOR); }
 
 // Home lane: a short arc that curls slightly inward off the ring, then rejoins
 // close to where it left — it never crosses to the center like the old design.
