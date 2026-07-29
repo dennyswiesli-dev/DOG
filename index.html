@@ -154,71 +154,77 @@ function shuffle(arr) {
 }
 
 /* ============================== BOARD GEOMETRY ============================== */
-// Pinwheel/meander layout, matching the reference diagram: the track is not a
-// plain square or curve — each quarter zig-zags away from its corner kennel,
-// dips inward, runs across, then zig-zags back out to approach the next
-// corner, forming a 4-armed "pinwheel with a hole in the middle" silhouette.
-// Each color's home lane is a straight line from its start space (marked by
-// the little triangle in the reference) running straight inward, well short
-// of the center. One quarter is authored by hand; the other three are that
-// same shape rotated 90° at a time around the board's center.
+// Octagonal ring board, per the precise reference diagram: an octagon (square
+// with chamfered corners) with a circular well cut out of the middle. The
+// shared track (open circles) runs evenly around the octagon's perimeter.
+// Each color has a diamond-shaped cluster of 4 kennel dots right at its
+// corner, and a straight diagonal home lane running from its corner inward
+// toward (but well short of) the center.
 
 const CX = 400, CY = 400;
 const CELL_R = 15;
+const OCT_MIN = 95, OCT_MAX = 705; // bounding square of the octagon
+const OCT_CUT = 0.30; // fraction of each side chamfered off at the corners
 
 function lerp(a, b, t) { return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; }
-function rotatePoint(p, deg, cx, cy) {
-  const rad = deg * Math.PI / 180;
-  const dx = p.x - cx, dy = p.y - cy;
-  return {
-    x: cx + dx * Math.cos(rad) - dy * Math.sin(rad),
-    y: cy + dx * Math.sin(rad) + dy * Math.cos(rad)
-  };
-}
 
-// Quarter-0 (green, top-left) track path in its own local frame: R = toward
-// the next corner (right), D = toward the board's interior (down). Starts at
-// the start space (index 0), zig-zags away from the corner in a small
-// staircase (an "hourglass" lobe, echoing the diagram), runs straight across
-// as the waist to the next corner, then zig-zags back up to approach it.
-// 16 points total = PER_COLOR.
-const QUAD_MOVES = ['R', 'D', 'R', 'D', 'R', 'D', 'R', 'R', 'R', 'R', 'R', 'U', 'R', 'U', 'R'];
-const QUAD_STEP = 34;
-const QUAD0_START = { x: 208, y: 90 };
-const DIR_VEC = { R: { x: 1, y: 0 }, L: { x: -1, y: 0 }, D: { x: 0, y: 1 }, U: { x: 0, y: -1 } };
-const QUAD0_POINTS = (() => {
-  const pts = [{ x: QUAD0_START.x, y: QUAD0_START.y }];
-  let cur = { x: QUAD0_START.x, y: QUAD0_START.y };
-  QUAD_MOVES.forEach(dir => {
-    const v = DIR_VEC[dir];
-    cur = { x: cur.x + v.x * QUAD_STEP, y: cur.y + v.y * QUAD_STEP };
-    pts.push({ x: cur.x, y: cur.y });
-  });
-  return pts;
+// 8 vertices of the octagon, walking clockwise from the top-left chamfer.
+const OCT_SIDE = OCT_MAX - OCT_MIN;
+const OCT_VERTS = (() => {
+  const c = OCT_CUT * OCT_SIDE;
+  return [
+    { x: OCT_MIN + c, y: OCT_MIN },
+    { x: OCT_MAX - c, y: OCT_MIN },
+    { x: OCT_MAX, y: OCT_MIN + c },
+    { x: OCT_MAX, y: OCT_MAX - c },
+    { x: OCT_MAX - c, y: OCT_MAX },
+    { x: OCT_MIN + c, y: OCT_MAX },
+    { x: OCT_MIN, y: OCT_MAX - c },
+    { x: OCT_MIN, y: OCT_MIN + c }
+  ];
 })();
+const OCT_SEG_LEN = OCT_VERTS.map((v, i) => {
+  const n = OCT_VERTS[(i + 1) % OCT_VERTS.length];
+  return Math.hypot(n.x - v.x, n.y - v.y);
+});
+const OCT_PERIM = OCT_SEG_LEN.reduce((a, b) => a + b, 0);
+const OCT_CUM = OCT_SEG_LEN.reduce((acc, len) => { acc.push((acc[acc.length - 1] || 0) + len); return acc; }, []);
 
+// Walk a fraction t (0..1) clockwise around the octagon starting at vertex 0.
+function octagonPointAtFraction(t) {
+  const target = ((t % 1) + 1) % 1 * OCT_PERIM;
+  let segIdx = 0;
+  while (segIdx < OCT_CUM.length && OCT_CUM[segIdx] < target) segIdx++;
+  const segStart = segIdx === 0 ? 0 : OCT_CUM[segIdx - 1];
+  const segT = (target - segStart) / OCT_SEG_LEN[segIdx];
+  const p0 = OCT_VERTS[segIdx], p1 = OCT_VERTS[(segIdx + 1) % OCT_VERTS.length];
+  return lerp(p0, p1, segT);
+}
 function trackCellPos(absIndex) {
   const c = Math.floor(absIndex / PER_COLOR);
-  const local = QUAD0_POINTS[absIndex % PER_COLOR];
-  return rotatePoint(local, c * 90, CX, CY);
+  const within = (absIndex % PER_COLOR) / PER_COLOR;
+  return octagonPointAtFraction((c / 4) + (within / 4));
 }
 function edgeStart(colorIndex) { return trackCellPos(colorIndex * PER_COLOR); }
 
-// Home lane: straight line from the start space, running "inward" (local D),
-// well short of the center — matches the thick straight lane in the diagram.
-const HOME_STEP = 34;
-const HOME_DEPTHS = [1, 2, 3, 4]; // in QUAD_STEP-ish units from the start space
+// Home lane: a straight diagonal line from the corner, aimed at the board's
+// center, stopping well short of it (the diagram's diagonal line of dots).
+const HOME_T = [0.16, 0.30, 0.44, 0.58];
 function homeCellPos(colorIndex, slot) {
-  const local = { x: QUAD0_START.x, y: QUAD0_START.y + HOME_DEPTHS[slot] * HOME_STEP };
-  return rotatePoint(local, colorIndex * 90, CX, CY);
+  const entrance = edgeStart(colorIndex);
+  return lerp(entrance, { x: CX, y: CY }, HOME_T[slot]);
 }
 
-// Kennel: a 2x2 cluster just outside/behind the start space, toward the
-// board's corner.
+// Kennel: a small diamond of 4 dots sitting just outside the corner.
 function kennelPos(colorIndex, slot) {
-  const grid = [[-38, -38], [-84, -38], [-38, -84], [-84, -84]][slot];
-  const local = { x: QUAD0_START.x + grid[0], y: QUAD0_START.y + grid[1] };
-  return rotatePoint(local, colorIndex * 90, CX, CY);
+  const entrance = edgeStart(colorIndex);
+  const dx = entrance.x - CX, dy = entrance.y - CY;
+  const len = Math.hypot(dx, dy) || 1;
+  const outX = dx / len, outY = dy / len; // unit vector pointing outward from center
+  const perpX = -outY, perpY = outX;
+  const base = { x: entrance.x + outX * 58, y: entrance.y + outY * 58 };
+  const diamond = [[0, -24], [0, 24], [-24, 0], [24, 0]][slot];
+  return { x: base.x + perpX * diamond[0] + outX * diamond[1], y: base.y + perpY * diamond[0] + outY * diamond[1] };
 }
 
 /* ============================== GAME RULES HELPERS ============================== */
@@ -713,15 +719,16 @@ function Board({ pieces, activePlayer }) {
     return <line key={ck + 'arm'} x1={start.x} y1={start.y} x2={end.x} y2={end.y}
       stroke={COLOR_HEX[ck]} strokeWidth="14" strokeOpacity="0.28" strokeLinecap="round" />;
   });
-  const trackLinePath = 'M ' + Array.from({ length: TRACK_LEN }, (_, i) => {
-    const p = trackCellPos(i);
-    return `${p.x},${p.y}`;
+  const octPathOuter = 'M ' + OCT_VERTS.map(v => {
+    const dx = v.x - CX, dy = v.y - CY, len = Math.hypot(dx, dy) || 1;
+    return `${v.x + (dx / len) * 45},${v.y + (dy / len) * 45}`;
   }).join(' L ') + ' Z';
+  const octPathTrack = 'M ' + OCT_VERTS.map(v => `${v.x},${v.y}`).join(' L ') + ' Z';
 
   return (
     <svg width="640" height="640" viewBox="0 0 800 800">
-      <rect x="20" y="20" width="760" height="760" rx="24" fill="#153d1c" />
-      <path d={trackLinePath} fill="none" stroke="#0f2913" strokeWidth="22" strokeLinejoin="round" />
+      <path d={octPathOuter} fill="#153d1c" />
+      <path d={octPathTrack} fill="none" stroke="#0f2913" strokeWidth="24" />
       {armLines}
       {trackCells}
       {homeCells}
