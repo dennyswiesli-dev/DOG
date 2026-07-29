@@ -3,1700 +3,902 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>DOG – Das Kartenspiel</title>
+<title>DOG – Das Brettspiel</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <style>
   :root {
-    --wood-dark: #6b4226;
-    --wood-mid: #9c6b3f;
-    --wood-light: #cfa06a;
-    --wood-felt: #3a2416;
+    --felt: #235c30;
+    --felt-dark: #163d20;
     --paper: #f3ead9;
     --ink: #2a1d12;
-    --red: #c0392b;
-    --red-dark: #8e2c20;
-    --blue: #2464a8;
-    --blue-dark: #1a4a80;
-    --green: #2f7a3f;
-    --green-dark: #235c30;
-    --yellow: #d4a017;
-    --yellow-dark: #a97e0f;
+    --green: #2f7a3f; --green-dark: #1c4d27;
+    --yellow: #d4a017; --yellow-dark: #a97e0f;
+    --blue: #2464a8; --blue-dark: #1a4a80;
+    --red: #c0392b; --red-dark: #8e2c20;
     --gold: #e0b04a;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body {
     font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-    background:
-      radial-gradient(ellipse at center, #4a2f1c 0%, #241408 100%);
+    background: radial-gradient(ellipse at center, #234a2c 0%, #10230f 100%);
     color: var(--paper);
     min-height: 100vh;
-    overflow-x: hidden;
   }
-  #root { min-height: 100vh; display: flex; flex-direction: column; }
+  #root { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 12px; }
+  h1.title { font-family: Georgia, 'Times New Roman', serif; letter-spacing: 0.08em; margin: 6px 0 2px; text-align: center; }
+  .subtitle { opacity: 0.75; font-size: 0.85em; margin-bottom: 10px; text-align: center; }
 
-  .display-font {
-    font-family: 'Georgia', 'Times New Roman', serif;
-    font-weight: 900;
-    letter-spacing: 0.02em;
-  }
+  .layout { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; align-items: flex-start; width: 100%; max-width: 1200px; }
+  .board-wrap { flex: 0 0 auto; }
+  .side-panel { flex: 1 1 320px; min-width: 300px; max-width: 420px; display: flex; flex-direction: column; gap: 10px; }
 
-  /* ===== Top bar ===== */
-  .topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 20px;
-    background: linear-gradient(180deg, #2b1a0e, #1c1109);
-    border-bottom: 3px solid var(--gold);
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-  .brand {
-    font-size: 22px;
-    color: var(--gold);
-    text-shadow: 0 2px 4px rgba(0,0,0,0.6);
-  }
-  .brand small { display:block; font-size: 11px; color: #d8c39a; font-weight: 400; letter-spacing: 0.15em; text-transform: uppercase; font-family: sans-serif;}
-  .status-pill {
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(224,176,74,0.4);
-    border-radius: 20px;
-    padding: 6px 16px;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .btn {
-    background: linear-gradient(180deg, #d9b25c, #b3872e);
-    color: #2a1a08;
-    border: none;
-    border-radius: 8px;
-    padding: 8px 16px;
-    font-weight: 700;
-    cursor: pointer;
-    font-size: 13px;
-    box-shadow: 0 2px 0 #6e4e18, 0 4px 8px rgba(0,0,0,0.3);
-    transition: transform 0.1s;
-  }
-  .btn:hover { transform: translateY(-1px); }
-  .btn:active { transform: translateY(1px); box-shadow: 0 1px 0 #6e4e18; }
-  .btn.secondary {
-    background: linear-gradient(180deg, #4a3624, #33251a);
-    color: var(--paper);
-    box-shadow: 0 2px 0 #1c130b, 0 4px 8px rgba(0,0,0,0.3);
-  }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .panel-box { background: rgba(0,0,0,0.35); border: 1px solid rgba(224,176,74,0.35); border-radius: 10px; padding: 10px 12px; }
+  .panel-box h3 { margin: 0 0 8px; font-size: 0.95em; color: var(--gold); border-bottom: 1px solid rgba(224,176,74,0.25); padding-bottom: 4px; }
 
-  /* ===== Setup screen ===== */
-  .setup-wrap {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 30px 16px;
-  }
-  .setup-card {
-    background: linear-gradient(160deg, #2e1c10, #1c1109);
-    border: 2px solid var(--gold);
-    border-radius: 20px;
-    padding: 40px;
-    max-width: 560px;
-    width: 100%;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-  }
-  .setup-title {
-    text-align: center;
-    font-size: 42px;
-    color: var(--gold);
-    margin: 0 0 6px;
-    text-shadow: 0 3px 6px rgba(0,0,0,0.6);
-  }
-  .setup-sub {
-    text-align: center;
-    color: #c9b48a;
-    margin: 0 0 30px;
-    font-size: 14px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-  .seat-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-    margin-bottom: 24px;
-  }
-  .seat-card {
-    border-radius: 12px;
-    padding: 14px;
-    border: 2px solid transparent;
-    background: rgba(255,255,255,0.04);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .seat-dot {
-    width: 22px; height: 22px; border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.6);
-    flex-shrink: 0;
-  }
-  .seat-info { flex: 1; }
-  .seat-name { font-weight: 700; font-size: 14px; }
-  .seat-team { font-size: 11px; color: #c9b48a; }
-  .seat-toggle {
-    display: flex;
-    background: rgba(0,0,0,0.3);
-    border-radius: 20px;
-    overflow: hidden;
-    font-size: 11px;
-  }
-  .seat-toggle button {
-    border: none;
-    padding: 5px 10px;
-    background: transparent;
-    color: #cbb99a;
-    cursor: pointer;
-    font-weight: 600;
-  }
-  .seat-toggle button.active {
-    background: var(--gold);
-    color: #2a1a08;
-  }
-  .start-btn-wrap { text-align: center; margin-top: 10px; }
-  .rules-note {
-    font-size: 12px;
-    color: #a9967a;
-    text-align: center;
-    margin-top: 18px;
-    line-height: 1.6;
-  }
+  .team-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; font-size: 0.9em; }
+  .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: middle; border: 1px solid rgba(0,0,0,0.4); }
 
-  /* ===== Game layout ===== */
-  .game-wrap {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 14px;
-    gap: 10px;
-  }
-  .board-area {
-    position: relative;
-    width: min(680px, 92vw);
-  }
-  .board-svg { width: 100%; height: auto; display: block; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5)); }
+  .log-box { height: 160px; overflow-y: auto; font-size: 0.82em; line-height: 1.35; display: flex; flex-direction: column-reverse; }
+  .log-line { padding: 2px 0; border-bottom: 1px dotted rgba(255,255,255,0.08); }
 
-  .players-strip {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    width: min(680px, 92vw);
-  }
-  .player-chip {
-    border-radius: 10px;
-    padding: 8px 10px;
-    font-size: 12px;
-    border: 2px solid rgba(255,255,255,0.15);
-    background: rgba(0,0,0,0.25);
-    position: relative;
-    overflow: hidden;
-  }
-  .player-chip.active {
-    border-color: var(--gold);
-    box-shadow: 0 0 0 2px rgba(224,176,74,0.35), 0 4px 14px rgba(224,176,74,0.25);
-  }
-  .player-chip .pname { font-weight: 700; display:flex; align-items:center; gap:6px;}
-  .player-chip .pmeta { color: #d8c9ac; font-size: 10.5px; margin-top: 2px; }
-  .swatch { width: 12px; height: 12px; border-radius: 50%; display: inline-block; border: 1px solid rgba(255,255,255,0.5); }
-
-  /* ===== Hand / cards ===== */
-  .hand-area {
-    width: min(680px, 92vw);
-    background: linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.15));
-    border-radius: 16px;
-    padding: 14px;
-    border: 1px solid rgba(224,176,74,0.25);
-  }
-  .hand-title {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: #d8c9ac;
-    margin-bottom: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .hand-cards {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    min-height: 96px;
-    align-items: center;
-  }
+  .hand-row { display: flex; gap: 6px; flex-wrap: wrap; }
   .card {
-    width: 62px;
-    height: 90px;
-    border-radius: 8px;
-    border: 2px solid rgba(255,255,255,0.75);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-weight: 900;
-    font-size: 26px;
-    cursor: pointer;
-    position: relative;
-    transition: transform 0.15s, box-shadow 0.15s;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.4);
-    user-select: none;
-    flex-shrink: 0;
+    width: 46px; height: 64px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 1.1em; cursor: pointer; user-select: none; position: relative;
+    border: 2px solid rgba(0,0,0,0.4); color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    transition: transform 0.12s;
   }
-  .card:hover { transform: translateY(-8px); box-shadow: 0 10px 18px rgba(0,0,0,0.5); }
-  .card.selected { transform: translateY(-14px); box-shadow: 0 0 0 3px var(--gold), 0 10px 20px rgba(0,0,0,0.5); }
+  .card:hover:not(.disabled) { transform: translateY(-4px); }
   .card.disabled { opacity: 0.35; cursor: not-allowed; }
-  .card.disabled:hover { transform: none; box-shadow: 0 3px 8px rgba(0,0,0,0.4); }
-  .card.normal { background: linear-gradient(160deg, #2f6fb0, #163a5e); color: white; }
-  .card.special { background: linear-gradient(160deg, #d6493a, #7a1f14); color: white; }
-  .card .corner { position: absolute; font-size: 9px; font-weight: 700; }
-  .card .corner.tl { top: 5px; left: 6px; }
-  .card .corner.br { bottom: 5px; right: 6px; transform: rotate(180deg); }
-  .card .sub { font-size: 9px; margin-top: 2px; font-weight: 600; opacity: 0.9; letter-spacing: 0.05em; }
+  .card.blue-card { background: linear-gradient(160deg, var(--blue), var(--blue-dark)); }
+  .card.red-card { background: linear-gradient(160deg, var(--red), var(--red-dark)); }
+  .card.joker-card { background: linear-gradient(160deg, var(--gold), #9c6b1e); color: #2a1d12; }
 
-  .empty-hand-msg { color: #a9967a; font-size: 13px; font-style: italic; }
+  button.btn {
+    background: linear-gradient(160deg, var(--gold), #9c6b1e); color: #2a1d12; border: none; border-radius: 6px;
+    padding: 8px 12px; font-weight: 700; cursor: pointer; font-size: 0.85em;
+  }
+  button.btn:hover { filter: brightness(1.08); }
+  button.btn.secondary { background: #4a4a4a; color: #fff; }
+  button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  /* ===== action bar ===== */
-  .action-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 10px;
-    gap: 10px;
-    flex-wrap: wrap;
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 50;
   }
-  .msg-box {
-    font-size: 13px;
-    color: #f0e2c0;
-    background: rgba(0,0,0,0.3);
-    padding: 8px 14px;
-    border-radius: 8px;
-    flex: 1;
-    min-width: 200px;
-    border-left: 3px solid var(--gold);
+  .modal-box {
+    background: #2a1d12; border: 2px solid var(--gold); border-radius: 10px; padding: 16px 18px; max-width: 460px; width: 92%;
+    max-height: 80vh; overflow-y: auto;
   }
+  .modal-box h3 { margin-top: 0; color: var(--gold); }
+  .option-btn {
+    display: block; width: 100%; text-align: left; background: rgba(255,255,255,0.06); border: 1px solid rgba(224,176,74,0.35);
+    color: var(--paper); padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; cursor: pointer; font-size: 0.88em;
+  }
+  .option-btn:hover { background: rgba(224,176,74,0.2); }
 
-  /* ===== overlay ===== */
-  .overlay {
-    position: fixed; inset: 0;
-    background: rgba(10,6,2,0.75);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 50;
-    padding: 20px;
-  }
-  .overlay-card {
-    background: linear-gradient(160deg, #2e1c10, #1c1109);
-    border: 2px solid var(--gold);
-    border-radius: 18px;
-    padding: 32px;
-    max-width: 460px;
-    text-align: center;
-  }
-  .overlay-card h2 { color: var(--gold); margin-top: 0; }
-  .overlay-card p { color: #e5d5b3; line-height: 1.6; font-size: 14px;}
-
-  /* piece token */
-  .piece-token { cursor: pointer; }
-  .piece-token.selectable { filter: drop-shadow(0 0 6px rgba(255,255,255,0.9)); }
-  .piece-token:hover.selectable { filter: drop-shadow(0 0 10px #fff); }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-  .pulse { animation: pulse 1.4s ease-in-out infinite; }
-
-  @media (max-width: 520px) {
-    .card { width: 50px; height: 74px; font-size: 20px; }
-    .setup-card { padding: 24px 18px; }
-    .setup-title { font-size: 32px; }
-  }
+  svg { display: block; }
+  .cell-track { stroke: #2a1d12; stroke-width: 1.2; }
+  .cell-home { stroke: #2a1d12; stroke-width: 1.2; }
+  .cell-kennel { stroke: #2a1d12; stroke-width: 1; opacity: 0.85; }
+  .piece { stroke: #1a1108; stroke-width: 1.6; }
+  .piece.current-turn { filter: drop-shadow(0 0 5px #fff); }
+  .status-line { font-size: 0.9em; text-align: center; margin: 6px 0; min-height: 1.4em; }
+  .active-player { font-weight: 800; }
+  footer.credits { opacity: 0.5; font-size: 0.72em; margin-top: 14px; text-align: center; }
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef } = React;
 
-const { useState, useEffect, useCallback, useMemo, useRef } = React;
+/* ============================== CONSTANTS ============================== */
 
-/* =========================================================
-   GAME LOGIC (ported from gameLogic.js)
-   ========================================================= */
-
-const COLORS = ['red', 'blue', 'green', 'yellow'];
-const COLOR_NAMES = { red: 'Rot', blue: 'Blau', green: 'Grün', yellow: 'Gelb' };
-const TEAM_OF = { red: 'A', blue: 'B', green: 'A', yellow: 'B' };
-const PARTNER_OF = { red: 'green', green: 'red', blue: 'yellow', yellow: 'blue' };
-const TEAM_LABEL = { A: 'Team Rot/Grün', B: 'Team Blau/Gelb' };
-
+const COLOR_KEYS = ['green', 'yellow', 'blue', 'red'];
+const COLOR_HEX = { green: '#2f7a3f', yellow: '#d4a017', blue: '#2464a8', red: '#c0392b' };
+const PLAYER_NAMES = ['Grün (Du)', 'Gelb', 'Blau', 'Rot'];
+const SEQUENCE = [6, 5, 4, 3, 2];
 const TRACK_LEN = 64;
-const HOME_STRETCH_LEN = 4;
+const PER_COLOR = 16;
+const HOME_SLOTS = 4;
+const NUMERIC_RANKS = ['2', '3', '5', '6', '8', '9', '10'];
+const RANKS_NORMAL = ['2', '3', '4', '5', '6', '7', '8', '9', '10', '12', 'SWAP', '13', '11'];
+const RED_RANKS = ['4', '7', 'SWAP', '13', '11'];
 
-function startTrackIndex(colorIdx) { return colorIdx * 16; }
+function startIndexOf(p) { return p * PER_COLOR; }
+function partnerOf(p) { return (p + 2) % 4; }
+function teamOf(p) { return p % 2; }
 
-const CARD_VALUES = [2, 3, 5, 6, 8, 9, 10, 12];
-const SPECIAL_VALUES = [4, 7, 11, 13, 'SWAP'];
-
-function cardKind(v) {
-  if (v === 4) return 'four';
-  if (v === 7) return 'seven';
-  if (v === 11) return 'start11';
-  if (v === 13) return 'start13';
-  if (v === 'SWAP') return 'swap';
-  if (v === 'JOKER') return 'joker';
-  return 'normal';
-}
+/* ============================== DECK ============================== */
 
 function buildDeck() {
   const deck = [];
-  let id = 0;
-  for (const v of CARD_VALUES) {
-    for (let i = 0; i < 8; i++) deck.push({ id: `c${id++}`, value: v, kind: 'normal' });
-  }
-  for (const v of SPECIAL_VALUES) {
-    for (let i = 0; i < 8; i++) deck.push({ id: `c${id++}`, value: v, kind: cardKind(v) });
-  }
-  for (let i = 0; i < 6; i++) deck.push({ id: `c${id++}`, value: 'JOKER', kind: 'joker' });
+  RANKS_NORMAL.forEach(rank => { for (let i = 0; i < 8; i++) deck.push({ rank }); });
+  for (let i = 0; i < 6; i++) deck.push({ rank: 'JOKER' });
   return deck;
 }
-
 function shuffle(arr) {
-  const a = [...arr];
+  const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+    const tmp = a[i]; a[i] = a[j]; a[j] = tmp;
   }
   return a;
 }
 
-function initialPieces() {
-  const pieces = [];
-  COLORS.forEach((color) => {
-    for (let i = 0; i < 4; i++) pieces.push({ id: `${color}-${i}`, color, state: 'home', pos: i });
-  });
-  return pieces;
+/* ============================== BOARD GEOMETRY ============================== */
+
+const CX = 400, CY = 400;
+const CELL_R = 15;
+const SQ_MIN = 110, SQ_MAX = 690; // square playing field bounds
+const CORNERS = [
+  { x: SQ_MIN, y: SQ_MIN }, // top-left    -> edge for color 0 (green)
+  { x: SQ_MAX, y: SQ_MIN }, // top-right   -> edge for color 1 (yellow)
+  { x: SQ_MAX, y: SQ_MAX }, // bottom-right-> edge for color 2 (blue)
+  { x: SQ_MIN, y: SQ_MAX }  // bottom-left -> edge for color 3 (red)
+];
+const HOME_T = [0.20, 0.40, 0.60, 0.80]; // slot 0 = near corner/track, slot 3 = near center
+
+function edgeStart(colorIndex) { return CORNERS[colorIndex]; }
+function edgeEnd(colorIndex) { return CORNERS[(colorIndex + 1) % 4]; }
+function lerp(a, b, t) { return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; }
+
+function trackCellPos(absIndex) {
+  const c = Math.floor(absIndex / PER_COLOR);
+  const f = (absIndex % PER_COLOR) / PER_COLOR;
+  return lerp(edgeStart(c), edgeEnd(c), f);
+}
+function homeCellPos(colorIndex, slot) {
+  return lerp(edgeStart(colorIndex), { x: CX, y: CY }, HOME_T[slot]);
+}
+function kennelPos(colorIndex, slot) {
+  const corner = edgeStart(colorIndex);
+  const base = lerp({ x: CX, y: CY }, corner, 1.14); // push a bit past the corner, outward
+  const offsets = [[-19, -19], [19, -19], [-19, 19], [19, 19]][slot];
+  return { x: base.x + offsets[0], y: base.y + offsets[1] };
 }
 
-const ROUND_CARD_COUNTS = [6, 5, 4, 3, 2];
-function cardsForRound(roundNumber) { return ROUND_CARD_COUNTS[(roundNumber - 1) % ROUND_CARD_COUNTS.length]; }
+/* ============================== GAME RULES HELPERS ============================== */
 
-function pieceKey(piece) {
-  if (piece.state === 'track') return `T${piece.pos}`;
-  if (piece.state === 'goal') return `G${piece.color}${piece.pos}`;
+function absPos(player, rel) { return rel < TRACK_LEN ? (startIndexOf(player) + rel) % TRACK_LEN : null; }
+function startColorOfAbs(abs) { return (abs % PER_COLOR === 0) ? Math.floor(abs / PER_COLOR) : -1; }
+
+function findOccupantAtAbs(pieces, abs, excludePlayer, excludeIdx) {
+  for (let p = 0; p < 4; p++) {
+    for (let k = 0; k < 4; k++) {
+      if (p === excludePlayer && k === excludeIdx) continue;
+      const rel = pieces[p][k];
+      if (rel != null && rel < TRACK_LEN && absPos(p, rel) === abs) return { p, k };
+    }
+  }
   return null;
 }
-
-function isOnOwnStart(piece) {
-  return piece.state === 'track' && piece.pos === startTrackIndex(COLORS.indexOf(piece.color));
+function ownPieceAtRel(pieces, player, rel, excludeIdx) {
+  for (let k = 0; k < 4; k++) {
+    if (k === excludeIdx) continue;
+    if (pieces[player][k] === rel) return k;
+  }
+  return -1;
+}
+function isStartProtected(pieces, colorIdx) {
+  return ownPieceAtRel(pieces, colorIdx, 0, -1) !== -1;
 }
 
-function findPieceAt(pieces, key) { return pieces.find((p) => pieceKey(p) === key); }
+function controllableOwner(pieces, actingPlayer) {
+  const own = pieces[actingPlayer];
+  const allFinished = own.every(r => r != null && r >= TRACK_LEN);
+  if (!allFinished) return actingPlayer;
+  const partner = partnerOf(actingPlayer);
+  const partnerFinished = pieces[partner].every(r => r != null && r >= TRACK_LEN);
+  return partnerFinished ? actingPlayer : partner;
+}
 
-// Vorwaerts-Pfad berechnen. gibt {path, finalState, finalPos, finalColor, error, overshoot}
-function computeForwardPath(piece, steps) {
-  const colorIdx = COLORS.indexOf(piece.color);
-  const myStart = startTrackIndex(colorIdx);
-  const path = [];
-  if (piece.state === 'goal') return { error: 'Figur ist bereits im Ziel.' };
-  if (piece.state === 'home') return { error: 'Figur steht im Haus.' };
+function tryMove(pieces, owner, k, steps) {
+  const rel = pieces[owner][k];
+  if (rel == null || rel >= TRACK_LEN + HOME_SLOTS - 1) return null; // kennel or already fully finished
+  if (steps < 0 && rel >= TRACK_LEN) return null; // cannot move backward inside the home stretch
+  const captured = [];
+  const newPieces = pieces.map(arr => arr.slice());
 
-  let curPos = piece.pos;
-  const startsOnOwnStart = curPos === myStart;
-  const distToOwnStartFromHere = ((myStart - curPos + TRACK_LEN) % TRACK_LEN);
-
-  for (let s = 1; s <= steps; s++) {
-    const willReachOwnStart = !startsOnOwnStart && (distToOwnStartFromHere === s);
-    if (willReachOwnStart && s < steps) {
-      const remaining = steps - s;
-      if (remaining <= HOME_STRETCH_LEN) {
-        for (let g = 0; g < remaining; g++) path.push({ type: 'goal', color: piece.color, pos: g });
-        return { path, finalState: 'goal', finalPos: remaining - 1, finalColor: piece.color };
+  if (steps > 0) {
+    let cur = rel;
+    for (let s = 1; s <= steps; s++) {
+      const nextRel = cur + 1;
+      if (nextRel <= TRACK_LEN - 1) {
+        const abs = absPos(owner, nextRel);
+        const startColor = startColorOfAbs(abs);
+        if (startColor !== -1 && isStartProtected(pieces, startColor)) {
+          return null; // blocked, cannot pass or land (regular card, not the 7)
+        }
+        if (s === steps) {
+          const occ = findOccupantAtAbs(pieces, abs, owner, k);
+          if (occ) captured.push(occ);
+        }
       } else {
-        return { error: 'Zug würde über das Ziel hinausschießen.', overshoot: true };
+        const homeSlot = nextRel - TRACK_LEN;
+        if (homeSlot > HOME_SLOTS - 1) return null;
+        if (ownPieceAtRel(pieces, owner, nextRel, k) !== -1) return null;
       }
-    } else if (willReachOwnStart && s === steps) {
-      path.push({ type: 'track', pos: myStart });
-      return { path, finalState: 'track', finalPos: myStart };
-    } else {
-      curPos = (curPos + 1) % TRACK_LEN;
-      path.push({ type: 'track', pos: curPos });
+      cur = nextRel;
+    }
+  } else if (steps < 0) {
+    let cur = rel;
+    const n = -steps;
+    for (let s = 1; s <= n; s++) {
+      const nextRel = ((cur - 1) % TRACK_LEN + TRACK_LEN) % TRACK_LEN;
+      const abs = absPos(owner, nextRel);
+      const startColor = startColorOfAbs(abs);
+      if (startColor !== -1 && isStartProtected(pieces, startColor)) return null;
+      cur = nextRel;
+    }
+    const occFinal = findOccupantAtAbs(pieces, absPos(owner, cur), owner, k);
+    if (occFinal) captured.push(occFinal);
+    newPieces[owner][k] = cur;
+    captured.forEach(c => { newPieces[c.p][c.k] = null; });
+    return { newPieces, captured, enteredHome: false };
+  } else {
+    return null;
+  }
+
+  const finalRel = rel + steps;
+  newPieces[owner][k] = finalRel;
+  captured.forEach(c => { newPieces[c.p][c.k] = null; });
+  return { newPieces, captured, enteredHome: finalRel >= TRACK_LEN };
+}
+
+function tryStart(pieces, owner, k) {
+  if (pieces[owner][k] != null) return null;
+  const startAbs = startIndexOf(owner);
+  if (isStartProtected(pieces, owner)) return null;
+  const occ = findOccupantAtAbs(pieces, startAbs, owner, k);
+  const newPieces = pieces.map(arr => arr.slice());
+  newPieces[owner][k] = 0;
+  const captured = [];
+  if (occ) { newPieces[occ.p][occ.k] = null; captured.push(occ); }
+  return { newPieces, captured, enteredHome: false };
+}
+
+function eligibleForSwap(pieces, player) {
+  const out = [];
+  for (let k = 0; k < 4; k++) {
+    const rel = pieces[player][k];
+    if (rel != null && rel >= 1 && rel < TRACK_LEN) out.push(k);
+  }
+  return out;
+}
+
+function generateSimplePlays(pieces, actingPlayer, rank) {
+  const owner = controllableOwner(pieces, actingPlayer);
+  const plays = [];
+  if (rank === '13' || rank === '11') {
+    for (let k = 0; k < 4; k++) {
+      const res = tryStart(pieces, owner, k);
+      if (res) plays.push({ label: `Figur ${k + 1} raus auf Startfeld`, kind: 'start', apply: res });
     }
   }
-  return { path, finalState: 'track', finalPos: curPos };
-}
-
-function computeBackwardPath(piece, steps) {
-  if (piece.state !== 'track') return { error: 'Nur Figuren auf der Bahn können rückwärts ziehen.' };
-  const path = [];
-  let curPos = piece.pos;
-  for (let s = 0; s < steps; s++) {
-    curPos = (curPos - 1 + TRACK_LEN) % TRACK_LEN;
-    path.push({ type: 'track', pos: curPos });
-  }
-  return { path, finalState: 'track', finalPos: curPos };
-}
-
-/* board field coordinate generation is in part 2 */
-/* =========================================================
-   BOARD GEOMETRY
-   Kreuzfoermiges Layout: 4 Arme (oben/rechts/unten/links).
-   Jeder Arm hat 16 Bahnfelder (gemeinsame Runde, 64 total)
-   plus einen 4-Felder-Zielsteg der zur Mitte fuehrt,
-   plus ein 4-Feld-Haus in der Ecke.
-   Farbreihenfolge im Uhrzeigersinn: red(0,oben) -> blue(1,rechts) -> green(2,unten) -> yellow(3,links)
-   ========================================================= */
-
-const VB = 700; // svg viewbox size
-const CENTER = VB / 2;
-const R_OUTER = 300;   // Bahn-Radius aussen
-const FIELD_R = 15;    // Radius der Kreis-Felder
-const GOAL_INSET = 46; // Abstand der Zielfelder von der Bahn zur Mitte
-
-// Wir bauen die 64 Bahnfelder auf einem Kreis mit leichten "Ecken" (rund, wie im Vorbild).
-// Vereinfachtes, aber exaktes Modell: reiner Kreis, 64 Punkte gleichverteilt,
-// Index 0 = Startfeld von 'red' oben (12 Uhr), im Uhrzeigersinn fortlaufend.
-function trackFieldPos(i) {
-  const angle = (i / TRACK_LEN) * Math.PI * 2 - Math.PI / 2; // start oben, im Uhrzeigersinn
-  return {
-    x: CENTER + R_OUTER * Math.cos(angle),
-    y: CENTER + R_OUTER * Math.sin(angle),
-  };
-}
-
-// Zielsteg: 4 Felder, die von aussen (kurz nach dem Startfeld) radial nach innen zur Mitte laufen,
-// jeweils in Richtung des naechsten Feldes NACH dem Startfeld (also "einbiegend").
-function goalFieldPos(colorIdx, gPos) {
-  // Wir platzieren den Zielsteg entlang des Radius, beginnend kurz hinter dem Startfeld-Winkel,
-  // leicht nach innen Richtung Zentrum, in einer geraden Linie mit leichtem Innenwinkel-Versatz
-  // damit er optisch wie ein "Einlauf" aussieht (siehe Referenzbild: Ziel liegt radial innerhalb der Bahn).
-  const startIdx = startTrackIndex(colorIdx);
-  const approachIdx = (startIdx + 1) % TRACK_LEN; // Feld direkt nach dem Startfeld = Einbiege-Richtung
-  const aOuter = (startIdx / TRACK_LEN) * Math.PI * 2 - Math.PI / 2;
-  const aApproach = (approachIdx / TRACK_LEN) * Math.PI * 2 - Math.PI / 2;
-  // Zielsteg-Winkel = Mittelwert der beiden (leicht Richtung naechstes Feld gedreht), Radius schrumpft mit gPos
-  const angle = aOuter + (aApproach - aOuter) * 0.5;
-  const r = R_OUTER - GOAL_INSET - gPos * 34;
-  return {
-    x: CENTER + r * Math.cos(angle),
-    y: CENTER + r * Math.sin(angle),
-  };
-}
-
-// Haus: 4 Kreise gruppiert in der jeweiligen "Ecke" ausserhalb der Bahn, je Farbe
-function homeFieldPos(colorIdx, hPos) {
-  const angle = (startTrackIndex(colorIdx) / TRACK_LEN) * Math.PI * 2 - Math.PI / 2 - (Math.PI / 8);
-  const r = R_OUTER + 55;
-  const baseX = CENTER + r * Math.cos(angle);
-  const baseY = CENTER + r * Math.sin(angle);
-  const spread = 26;
-  const cols = 2;
-  const col = hPos % cols;
-  const row = Math.floor(hPos / cols);
-  // rotate small grid to align roughly radially - simple offset grid is fine visually
-  return { x: baseX + (col - 0.5) * spread, y: baseY + (row - 0.5) * spread };
-}
-
-function fieldColorForColor(color) {
-  return { red: 'var(--red)', blue: 'var(--blue)', green: 'var(--green)', yellow: 'var(--yellow)' }[color];
-}
-function fieldColorDarkForColor(color) {
-  return { red: 'var(--red-dark)', blue: 'var(--blue-dark)', green: 'var(--green-dark)', yellow: 'var(--yellow-dark)' }[color];
-}
-
-function piecePos(piece) {
-  const colorIdx = COLORS.indexOf(piece.color);
-  if (piece.state === 'home') return homeFieldPos(colorIdx, piece.pos);
-  if (piece.state === 'goal') return goalFieldPos(colorIdx, piece.pos);
-  return trackFieldPos(piece.pos);
-}
-
-/* =========================================================
-   MOVE GENERATION - alle legalen Zuege fuer eine Karte
-   ========================================================= */
-
-// Gibt Liste moeglicher "Aktionen" zurueck, die ein Spieler mit dieser Karte fuer piece machen kann.
-// Eine Aktion = { type:'start' } | {type:'move', steps, dir:'f'|'b'} | {type:'swap'} | {type:'seven', ...}
-// Fuer UI-Zwecke generieren wir hier nur EINFACHE (nicht-7, nicht-swap) Zuege pro Figur.
-function canStartPiece(piece, pieces) {
-  if (piece.state !== 'home') return false;
-  const colorIdx = COLORS.indexOf(piece.color);
-  const startIdx = startTrackIndex(colorIdx);
-  const occupant = findPieceAt(pieces, `T${startIdx}`);
-  if (occupant && occupant.color === piece.color) return false; // eigenes Startfeld blockiert
-  return true; // gegnerische Figur dort wird geschlagen (nicht geschuetzt da... doch geschuetzt wenn eigene Farbe)
-}
-
-function applyStart(piece, pieces) {
-  const colorIdx = COLORS.indexOf(piece.color);
-  const startIdx = startTrackIndex(colorIdx);
-  let newPieces = pieces.map(p => p.id === piece.id ? { ...p, state: 'track', pos: startIdx } : p);
-  const occupant = findPieceAt(pieces, `T${startIdx}`);
-  if (occupant && occupant.id !== piece.id) {
-    newPieces = sendHome(newPieces, occupant.id);
-  }
-  return newPieces;
-}
-
-function sendHome(pieces, pieceId) {
-  return pieces.map(p => {
-    if (p.id !== pieceId) return p;
-    const colorPieces = pieces.filter(pp => pp.color === p.color);
-    const usedHomeSlots = new Set(colorPieces.filter(pp => pp.state === 'home').map(pp => pp.pos));
-    let slot = 0;
-    while (usedHomeSlots.has(slot)) slot++;
-    return { ...p, state: 'home', pos: slot };
-  });
-}
-
-// Prueft ob ein Feld durch eine GESCHUETZTE fremde Figur blockiert ist (eigenes Startfeld einer anderen Farbe)
-function isProtectedOccupant(occupant) {
-  if (!occupant) return false;
-  if (occupant.state === 'goal') return true; // Ziel immer geschuetzt (kann eh nicht erreicht werden ausser eigene)
-  if (occupant.state === 'track') return isOnOwnStart(occupant);
-  return false;
-}
-
-// Berechnet Ergebnis eines einfachen Vorwaerts-/Rueckwaertszugs inkl. Schlagen.
-// isSeven=true: JEDE ueberholte Figur (auch eigene, auch Zwischenfelder) wird geschlagen (Sonderregel 7er).
-// Gibt {ok:true, newPieces, captured:[...]} oder {ok:false, reason}
-function applySimpleMove(piece, pieces, steps, dir, isSeven) {
-  const result = dir === 'f' ? computeForwardPath(piece, steps) : computeBackwardPath(piece, steps);
-  if (result.error) return { ok: false, reason: result.error };
-
-  // Kollisionscheck: bei normalen Karten wird nur das LETZTE Feld auf Schlagen geprueft (Zwischenfelder
-  // duerfen ueberflogen werden). Bei der 7 (isSeven=true) wird JEDES Feld im Pfad geprueft und geschlagen.
-  // Geschuetzte Figuren auf ihrem eigenen Startfeld blockieren IMMER (auch bei der 7 - sie koennen nicht
-  // ueberholt werden, siehe Anleitung "Startfeld").
-  for (let idx = 0; idx < result.path.length; idx++) {
-    const step = result.path[idx];
-    const isLast = idx === result.path.length - 1;
-    const key = step.type === 'track' ? `T${step.pos}` : `G${step.color}${step.pos}`;
-    const occupant = findPieceAt(pieces, key);
-    if (!occupant || occupant.id === piece.id) continue;
-
-    const isProtectedStart = step.type === 'track' &&
-      occupant.state === 'track' &&
-      isOnOwnStart(occupant) &&
-      occupant.color !== piece.color;
-
-    if (isProtectedStart) {
-      return { ok: false, reason: `Feld ist durch geschütztes Startfeld von ${COLOR_NAMES[occupant.color]} blockiert.` };
-    }
-    if (step.type === 'goal' && isLast) {
-      return { ok: false, reason: 'Zielfeld bereits belegt.' };
-    }
-    if (step.type === 'goal' && !isLast) {
-      // eigene Figuren im Zielsteg koennen theoretisch im Weg stehen wenn Ziel-Slot besetzt ist
-      return { ok: false, reason: 'Weg zum Ziel ist blockiert.' };
-    }
-    // ab hier: normales Bahnfeld, nicht geschuetzt -> bei isSeven ODER isLast wird geschlagen
-    if (!isSeven && !isLast) continue; // normale Karte: Zwischenfeld einfach ueberspringen
-  }
-
-  // Ausfuehren: Schlagen anwenden
-  let newPieces = [...pieces];
-  let captured = [];
-  const fieldsToCheck = isSeven
-    ? result.path
-    : [result.path[result.path.length - 1]];
-  for (const step of fieldsToCheck) {
-    const key = step.type === 'track' ? `T${step.pos}` : `G${step.color}${step.pos}`;
-    const occupant = findPieceAt(newPieces, key);
-    if (occupant && occupant.id !== piece.id) {
-      newPieces = sendHome(newPieces, occupant.id);
-      captured.push(occupant.id);
-    }
-  }
-  newPieces = newPieces.map(p => {
-    if (p.id !== piece.id) return p;
-    if (result.finalState === 'goal') return { ...p, state: 'goal', pos: result.finalPos, color: result.finalColor };
-    return { ...p, state: 'track', pos: result.finalPos };
-  });
-
-  return { ok: true, newPieces, captured };
-}
-
-/* =========================================================
-   TAUSCH-KARTE (SWAP)
-   ========================================================= */
-function getSwappableTargets(piece, pieces) {
-  // eigene Figur (piece) muss getauscht werden mit EINER anderen Figur (Gegner ODER Partner),
-  // nicht mit sich selbst, nicht mit geschuetzten (eigenes Startfeld) oder Ziel-Figuren.
-  return pieces.filter(p => {
-    if (p.id === piece.id) return false;
-    if (p.state === 'home') return false;
-    if (p.state === 'goal') return false;
-    if (p.state === 'track' && isOnOwnStart(p)) return false;
-    return true;
-  });
-}
-
-function applySwap(pieceA, pieceB, pieces) {
-  const a = pieces.find(p => p.id === pieceA.id);
-  const b = pieces.find(p => p.id === pieceB.id);
-  const aState = { state: a.state, pos: a.pos };
-  const bState = { state: b.state, pos: b.pos };
-  return pieces.map(p => {
-    if (p.id === a.id) return { ...p, state: bState.state, pos: bState.pos };
-    if (p.id === b.id) return { ...p, state: aState.state, pos: aState.pos };
-    return p;
-  });
-}
-
-// Gibt alle eigenen+geschuetzten-only Check: kann Tauschkarte ueberhaupt etwas bewirken?
-function swapHasAnyTarget(playerColor, pieces) {
-  const myPieces = pieces.filter(p => p.color === playerColor && p.state === 'track' && !isOnOwnStart(p));
-  for (const mp of myPieces) {
-    const targets = getSwappableTargets(mp, pieces);
-    if (targets.length > 0) return true;
-  }
-  return false;
-}
-
-/* =========================================================
-   SPIELBARKEITS-CHECK je Karte (fuer Zugzwang & KI)
-   Gibt Liste "spielbarer Interpretationen" zurueck:
-   { kind: 'start' | 'move' | 'moveBack' | 'seven' | 'swap' | 'jokerAs', ... }
-   ========================================================= */
-
-function movablePiecesOnTrack(playerColor, pieces) {
-  return pieces.filter(p => p.color === playerColor && p.state === 'track');
-}
-function homePiecesOf(playerColor, pieces) {
-  return pieces.filter(p => p.color === playerColor && p.state === 'home');
-}
-
-// Fuer eine gegebene Karte (value/kind) UND einen gewaehlten "effektiven Wert" (bei Joker/11/13 wahlfrei),
-// prueft ob IRGENDEIN Zug moeglich ist. Wird v.a. fuer Zugzwang gebraucht.
-function anyLegalMoveForCard(playerColor, pieces, card) {
-  const options = getCardPlayOptions(playerColor, pieces, card);
-  return options.length > 0;
-}
-
-// Liefert grobe Liste an spielbaren "Optionen" (fuer KI Bewertung + Zugzwang-Check).
-// Jede Option hat genug Info um sie auszufuehren.
-function getCardPlayOptions(playerColor, pieces, card) {
-  const options = [];
-  const myTrack = movablePiecesOnTrack(playerColor, pieces);
-  const myHome = homePiecesOf(playerColor, pieces);
-
-  function tryAddMove(piece, steps, dir, isSeven) {
-    const res = dir === 'f' ? computeForwardPath(piece, steps) : computeBackwardPath(piece, steps);
-    if (res.error) return;
-    const sim = applySimpleMove(piece, pieces, steps, dir, isSeven);
-    if (sim.ok) options.push({ kind: 'move', pieceId: piece.id, steps, dir, card, isSeven });
-  }
-
-  function tryAddStart(piece) {
-    if (canStartPiece(piece, pieces)) options.push({ kind: 'start', pieceId: piece.id, card });
-  }
-
-  const kind = card.kind;
-
-  if (kind === 'normal') {
-    myTrack.forEach(p => tryAddMove(p, card.value, 'f'));
-  } else if (kind === 'four') {
-    myTrack.forEach(p => { tryAddMove(p, 4, 'f'); tryAddMove(p, 4, 'b'); });
-  } else if (kind === 'start11') {
-    myHome.forEach(p => tryAddStart(p));
-    myTrack.forEach(p => { tryAddMove(p, 1, 'f'); tryAddMove(p, 11, 'f'); });
-  } else if (kind === 'start13') {
-    myHome.forEach(p => tryAddStart(p));
-    myTrack.forEach(p => tryAddMove(p, 13, 'f'));
-  } else if (kind === 'seven') {
-    // Fuer Zugzwang reicht: gibt es MINDESTENS EINE gueltige Verteilung? -> pruefen wir grob:
-    // ein Einzelzug mit vollen 7 zaehlt schonmal als Option (einfachster Fall).
-    myTrack.forEach(p => tryAddMove(p, 7, 'f', true));
-    // volle Verteilungssuche passiert im dedizierten Seven-UI-Modus; hier nur Existenzcheck grob.
-    if (options.filter(o => o.card === card).length === 0 && myTrack.length >= 2) {
-      // pruefe ob irgendeine Aufteilung auf >=2 Figuren moeglich ist
-      if (findAnySevenSplit(playerColor, pieces, 7)) {
-        options.push({ kind: 'sevenSplitExists', card });
+  let values = [];
+  if (rank === '4') values = [4, -4];
+  else if (rank === '13') values = [13];
+  else if (rank === '11') values = [1, 11];
+  else if (rank === '12') values = [12];
+  else if (NUMERIC_RANKS.indexOf(rank) !== -1) values = [parseInt(rank, 10)];
+  values.forEach(v => {
+    for (let k = 0; k < 4; k++) {
+      if (pieces[owner][k] == null) continue;
+      const res = tryMove(pieces, owner, k, v);
+      if (res) {
+        const dir = v > 0 ? 'vor' : 'zurück';
+        plays.push({ label: `Figur ${k + 1}: ${Math.abs(v)} Felder ${dir}${res.captured.length ? ' (schlägt)' : ''}`, kind: 'move', apply: res });
       }
     }
-  } else if (kind === 'swap') {
-    if (swapHasAnyTarget(playerColor, pieces)) options.push({ kind: 'swap', card });
-    else options.push({ kind: 'swapNoop', card }); // muss trotzdem "gespielt" (abgeworfen) werden koennen
-  } else if (kind === 'joker') {
-    // Joker kann JEDE Karte simulieren: Start, alle Zahlen, 4 vor/zurueck, 11, 13, 7, swap
-    myHome.forEach(p => tryAddStart(p));
-    myTrack.forEach(p => {
-      [1,2,3,4,5,6,7,8,9,10,11,12,13].forEach(v => tryAddMove(p, v, 'f'));
-      tryAddMove(p, 4, 'b');
+  });
+  return plays;
+}
+
+function generateSwapPlays(pieces, actingPlayer) {
+  const owner = controllableOwner(pieces, actingPlayer);
+  const ownEligible = eligibleForSwap(pieces, owner);
+  const plays = [];
+  if (ownEligible.length === 0) return plays;
+  for (let p = 0; p < 4; p++) {
+    if (p === owner) continue;
+    const otherEligible = eligibleForSwap(pieces, p);
+    otherEligible.forEach(ok => {
+      ownEligible.forEach(myk => {
+        const newPieces = pieces.map(arr => arr.slice());
+        const myAbs = absPos(owner, pieces[owner][myk]);
+        const otherAbs = absPos(p, pieces[p][ok]);
+        newPieces[owner][myk] = ((otherAbs - startIndexOf(owner)) % TRACK_LEN + TRACK_LEN) % TRACK_LEN;
+        newPieces[p][ok] = ((myAbs - startIndexOf(p)) % TRACK_LEN + TRACK_LEN) % TRACK_LEN;
+        plays.push({
+          label: `Tausche Figur ${myk + 1} mit ${PLAYER_NAMES[p]} Figur ${ok + 1}`,
+          kind: 'swap',
+          apply: { newPieces, captured: [], enteredHome: false }
+        });
+      });
     });
-    if (swapHasAnyTarget(playerColor, pieces)) options.push({ kind: 'swap', card, viaJoker: true });
-    if (findAnySevenSplit(playerColor, pieces, 7)) options.push({ kind: 'sevenSplitExists', card, viaJoker: true });
   }
-
-  return options;
+  return plays;
 }
 
-// Rekursive Suche: gibt es eine gueltige (Teil-)Verteilung von 'remaining' Punkten auf eigene track-Figuren
-// (und ggf. Partnerfiguren wenn allowPartner) sodass am Ende alles verbraucht ist?
-function findAnySevenSplit(playerColor, pieces, totalPoints, allowPartner) {
-  const myTrack = movablePiecesOnTrack(playerColor, pieces);
-  function rec(remaining, curPieces) {
-    if (remaining === 0) return true;
-    const candidates = movablePiecesOnTrack(playerColor, curPieces);
-    for (const p of candidates) {
-      for (let s = 1; s <= remaining; s++) {
-        const sim = applySimpleMove(p, curPieces, s, 'f', true);
-        if (sim.ok) {
-          if (rec(remaining - s, sim.newPieces)) return true;
-        }
+function sevenStepOptions(pieces, owner) {
+  const out = [];
+  for (let k = 0; k < 4; k++) {
+    const rel = pieces[owner][k];
+    if (rel == null || rel >= TRACK_LEN + HOME_SLOTS - 1) continue;
+    const nextRel = rel + 1;
+    if (nextRel <= TRACK_LEN - 1) {
+      out.push(k);
+    } else {
+      const homeSlot = nextRel - TRACK_LEN;
+      if (homeSlot <= HOME_SLOTS - 1 && ownPieceAtRel(pieces, owner, nextRel, k) === -1) out.push(k);
+    }
+  }
+  return out;
+}
+function applySevenStep(pieces, owner, k) {
+  const rel = pieces[owner][k];
+  const nextRel = rel + 1;
+  const newPieces = pieces.map(arr => arr.slice());
+  const captured = [];
+  if (nextRel <= TRACK_LEN - 1) {
+    const abs = absPos(owner, nextRel);
+    const occ = findOccupantAtAbs(pieces, abs, owner, k);
+    if (occ) { captured.push(occ); newPieces[occ.p][occ.k] = null; }
+  }
+  newPieces[owner][k] = nextRel;
+  return { newPieces, captured };
+}
+function sevenFeasible(pieces, owner, remaining, depth) {
+  depth = depth || 0;
+  if (remaining === 0) return true;
+  if (depth > 8) return false;
+  const opts = sevenStepOptions(pieces, owner);
+  for (let i = 0; i < opts.length; i++) {
+    const k = opts[i];
+    const r = applySevenStep(pieces, owner, k);
+    if (sevenFeasible(r.newPieces, owner, remaining - 1, depth + 1)) return true;
+  }
+  return false;
+}
+
+function effectiveOptions(pieces, actingPlayer, rank) {
+  if (rank === 'JOKER') {
+    let simple = [], swap = [], seven = false;
+    RANKS_NORMAL.forEach(r => {
+      const o = effectiveOptions(pieces, actingPlayer, r);
+      simple.push(...o.simple.map(p => ({ ...p, label: 'Joker als ' + r + ': ' + p.label })));
+      swap.push(...o.swap.map(p => ({ ...p, label: 'Joker als J: ' + p.label })));
+      if (o.seven) seven = true;
+    });
+    return { simple, swap, seven };
+  }
+  if (rank === '7') {
+    const owner = controllableOwner(pieces, actingPlayer);
+    return { simple: [], swap: [], seven: sevenFeasible(pieces, owner, 7) };
+  }
+  if (rank === 'SWAP') {
+    return { simple: [], swap: generateSwapPlays(pieces, actingPlayer), seven: false };
+  }
+  return { simple: generateSimplePlays(pieces, actingPlayer, rank), swap: [], seven: false };
+}
+
+function cardHasPlay(pieces, actingPlayer, rank) {
+  const o = effectiveOptions(pieces, actingPlayer, rank);
+  return o.simple.length > 0 || o.swap.length > 0 || o.seven;
+}
+
+function teamFinishedCount(pieces, team) {
+  let n = 0;
+  [team, team + 2].forEach(p => { pieces[p].forEach(r => { if (r != null && r >= TRACK_LEN) n++; }); });
+  return n;
+}
+
+/* ============================== AI ============================== */
+
+function chooseAiPlay(pieces, player, hand) {
+  let best = null, bestScore = -Infinity;
+  hand.forEach((card, idx) => {
+    const o = effectiveOptions(pieces, player, card.rank);
+    o.simple.forEach(play => {
+      let score = play.apply.captured.length * 80;
+      if (play.kind === 'start') score += 25;
+      if (play.apply.enteredHome) score += 40;
+      score += 2;
+      if (score > bestScore) { bestScore = score; best = { cardIdx: idx, play }; }
+    });
+    o.swap.forEach(play => {
+      const score = 5;
+      if (score > bestScore) { bestScore = score; best = { cardIdx: idx, play }; }
+    });
+  });
+  let bestSevenCard = -1;
+  hand.forEach((card, idx) => {
+    if (card.rank === '7' || card.rank === 'JOKER') {
+      const owner = controllableOwner(pieces, player);
+      if (sevenFeasible(pieces, owner, 7)) {
+        if (bestSevenCard === -1) bestSevenCard = idx;
       }
     }
-    if (allowPartner) {
-      const partnerColor = PARTNER_OF[playerColor];
-      const partnerTrack = movablePiecesOnTrack(partnerColor, curPieces);
-      for (const p of partnerTrack) {
-        for (let s = 1; s <= remaining; s++) {
-          const sim = applySimpleMove(p, curPieces, s, 'f', true);
-          if (sim.ok) {
-            if (rec(remaining - s, sim.newPieces)) return true;
-          }
-        }
-      }
-    }
-    return false;
-  }
-  if (myTrack.length === 0) return false;
-  return rec(totalPoints, pieces);
-}
-
-/* =========================================================
-   SPIELZUSTAND & RUNDEN-MANAGEMENT
-   ========================================================= */
-
-function createInitialGameState(seatModes) {
-  // seatModes: {red:'human'|'ai', blue:..., green:..., yellow:...}
-  const deck = shuffle(buildDeck());
-  return {
-    phase: 'exchange', // 'exchange' -> 'playing' -> 'roundEnd' -> 'gameOver'
-    seatModes,
-    pieces: initialPieces(),
-    drawPile: deck,
-    discardPile: [],
-    hands: { red: [], blue: [], green: [], yellow: [] },
-    roundNumber: 1,
-    dealerIdx: 0, // wer gerade Geber ist (Index in COLORS)
-    starterIdx: 0, // wer die Runde eroeffnet
-    currentPlayerIdx: 0,
-    exchangesDone: { red: false, blue: false, green: false, yellow: false },
-    exchangeOffers: {}, // color -> cardId die er/sie weitergibt
-    activePlayers: { red: true, blue: true, green: true, yellow: true }, // noch in der Runde aktiv
-    log: ['Willkommen bei DOG! Die erste Runde beginnt.'],
-    winnerTeam: null,
-    lastMoveHighlight: null,
-  };
-}
-
-function dealCards(state) {
-  const count = cardsForRound(state.roundNumber);
-  let drawPile = [...state.drawPile];
-  let discardPile = [...state.discardPile];
-  const hands = { red: [], blue: [], green: [], yellow: [] };
-
-  const totalNeeded = count * 4;
-  if (drawPile.length < totalNeeded) {
-    drawPile = shuffle([...drawPile, ...discardPile]);
-    discardPile = [];
-  }
-
-  // Geber verteilt beginnend bei sich selbst, im Uhrzeigersinn
-  for (let i = 0; i < count; i++) {
-    for (let s = 0; s < 4; s++) {
-      const colorIdx = (state.dealerIdx + s) % 4;
-      const color = COLORS[colorIdx];
-      hands[color].push(drawPile.pop());
-    }
-  }
-
-  return { ...state, drawPile, discardPile, hands };
-}
-
-function startNewRound(state) {
-  let s = dealCards(state);
-  s = {
-    ...s,
-    phase: 'exchange',
-    exchangesDone: { red: false, blue: false, green: false, yellow: false },
-    exchangeOffers: {},
-    activePlayers: { red: true, blue: true, green: true, yellow: true },
-    currentPlayerIdx: s.starterIdx,
-    log: [...s.log, `— Runde ${s.roundNumber} beginnt (${cardsForRound(s.roundNumber)} Karten pro Spieler) —`],
-  };
-  return s;
-}
-
-function finishExchangeIfReady(state) {
-  const allDone = COLORS.every(c => state.exchangeOffers[c]);
-  if (!allDone) return state;
-  // jeder gibt seine offer-Karte an PARTNER, empfaengt dessen offer-Karte
-  const hands = { ...state.hands };
-  COLORS.forEach(c => { hands[c] = [...hands[c]]; });
-
-  COLORS.forEach(color => {
-    const offeredCardId = state.exchangeOffers[color];
-    hands[color] = hands[color].filter(c => c.id !== offeredCardId);
   });
-  COLORS.forEach(color => {
-    const partner = PARTNER_OF[color];
-    const offeredCardId = state.exchangeOffers[partner];
-    const card = state.hands[partner].find(c => c.id === offeredCardId);
-    hands[color] = [...hands[color], card];
-  });
-
-  return {
-    ...state,
-    hands,
-    phase: 'playing',
-    log: [...state.log, 'Kartentausch abgeschlossen. Das Spiel beginnt.'],
-  };
-}
-
-function nextActivePlayerIdx(state, fromIdx) {
-  let idx = fromIdx;
-  for (let i = 0; i < 4; i++) {
-    idx = (idx + 1) % 4;
-    if (state.activePlayers[COLORS[idx]]) return idx;
+  if (bestSevenCard !== -1 && bestScore < 60) {
+    return { cardIdx: bestSevenCard, seven: true };
   }
-  return null; // niemand mehr aktiv
-}
-
-function checkRoundOver(state) {
-  const noCardsLeft = COLORS.every(c => state.hands[c].length === 0 || !state.activePlayers[c]);
-  const anyActiveWithCards = COLORS.some(c => state.activePlayers[c] && state.hands[c].length > 0);
-  return !anyActiveWithCards;
-}
-
-function checkGameOver(pieces) {
-  const teamAWin = COLORS.filter(c => TEAM_OF[c] === 'A').every(c =>
-    pieces.filter(p => p.color === c).every(p => p.state === 'goal'));
-  const teamBWin = COLORS.filter(c => TEAM_OF[c] === 'B').every(c =>
-    pieces.filter(p => p.color === c).every(p => p.state === 'goal'));
-  if (teamAWin) return 'A';
-  if (teamBWin) return 'B';
+  if (best) return { cardIdx: best.cardIdx, play: best.play };
   return null;
 }
 
-function advanceAfterCardPlayed(state, playerColor) {
-  // Karte wurde gespielt (oder Spieler ist ausgeschieden) -> naechster aktiver Spieler
-  let s = { ...state };
-  const win = checkGameOver(s.pieces);
-  if (win) {
-    return { ...s, phase: 'gameOver', winnerTeam: win, log: [...s.log, `🏆 ${TEAM_LABEL[win]} gewinnt das Spiel!`] };
-  }
-
-  if (checkRoundOver(s)) {
-    // Runde vorbei -> naechste Runde vorbereiten
-    const newDealerIdx = (s.dealerIdx + 1) % 4;
-    const newStarterIdx = (s.starterIdx + 1) % 4;
-    s = {
-      ...s,
-      roundNumber: s.roundNumber + 1,
-      dealerIdx: newDealerIdx,
-      starterIdx: newStarterIdx,
-      log: [...s.log, `Runde ${s.roundNumber} beendet.`],
-    };
-    s = startNewRound(s);
-    return s;
-  }
-
-  const curColorIdx = COLORS.indexOf(playerColor);
-  const nextIdx = nextActivePlayerIdx(s, curColorIdx);
-  if (nextIdx === null) {
-    // sollte durch checkRoundOver abgefangen sein, aber Sicherheitsnetz:
-    const newDealerIdx = (s.dealerIdx + 1) % 4;
-    const newStarterIdx = (s.starterIdx + 1) % 4;
-    s = { ...s, roundNumber: s.roundNumber + 1, dealerIdx: newDealerIdx, starterIdx: newStarterIdx };
-    return startNewRound(s);
-  }
-  return { ...s, currentPlayerIdx: nextIdx };
-}
-
-// Wenn ein Spieler "am Zug" ist aber KEINE seiner Karten spielbar ist -> automatisch ausscheiden
-function playerHasAnyPlayableCard(playerColor, pieces, hand) {
-  for (const card of hand) {
-    if (getCardPlayOptions(playerColor, pieces, card).length > 0) return true;
-  }
-  return false;
-}
-
-function eliminatePlayerForRound(state, playerColor) {
-  const hand = state.hands[playerColor];
-  const discardPile = [...state.discardPile, ...hand];
-  const hands = { ...state.hands, [playerColor]: [] };
-  const activePlayers = { ...state.activePlayers, [playerColor]: false };
-  const log = [...state.log, `${COLOR_NAMES[playerColor]} kann keine Karte spielen und scheidet für diese Runde aus.`];
-  return { ...state, hands, discardPile, activePlayers, log };
-}
-
-/* =========================================================
-   EINFACHE KI
-   Waehlt: welche Karte + welche Option gespielt wird.
-   Heuristik: bevorzugt Schlagen > Ziel erreichen > Start > normaler Vorwaertszug > Rueckwaertszug
-   Vermeidet unnoetiges Verschieben aus dem Schutz, wenn moeglich.
-   ========================================================= */
-
-function scoreOption(playerColor, pieces, option) {
-  let score = 0;
-  if (option.kind === 'start') score += 50;
-  if (option.kind === 'swap') score += 5; // eher niedrig, da riskant/erzwungen
-  if (option.kind === 'move') {
-    const piece = pieces.find(p => p.id === option.pieceId);
-    const sim = applySimpleMove(piece, pieces, option.steps, option.dir, option.isSeven);
-    if (sim.ok) {
-      if (sim.captured.length > 0) {
-        // bonus fuers schlagen, mehr bonus wenn gegnerische Figur
-        sim.captured.forEach(cid => {
-          const cp = pieces.find(p => p.id === cid);
-          score += (cp.color === playerColor) ? -10 : 40;
-        });
-      }
-      const movedPiece = sim.newPieces.find(p => p.id === option.pieceId);
-      if (movedPiece.state === 'goal') score += 60;
-      if (option.dir === 'b') score -= 15;
-      // Fortschritt bevorzugen
-      score += option.steps * 1.2;
-    }
-  }
-  if (option.kind === 'sevenSplitExists') score += 45;
-  return score + Math.random() * 3;
-}
-
-function aiChooseMove(playerColor, pieces, hand) {
-  let best = null;
-  let bestScore = -Infinity;
-  for (const card of hand) {
-    const options = getCardPlayOptions(playerColor, pieces, card);
-    for (const opt of options) {
-      const sc = scoreOption(playerColor, pieces, opt);
-      if (sc > bestScore) { bestScore = sc; best = { card, option: opt }; }
-    }
-  }
-  return best;
-}
-
-// KI fuer Sieben-Aufteilung: findet eine konkrete Verteilung (Liste von {pieceId, steps})
-function aiFindSevenDistribution(playerColor, pieces, totalPoints, allowPartner) {
-  function rec(remaining, curPieces, acc) {
-    if (remaining === 0) return acc;
-    const candidates = movablePiecesOnTrack(playerColor, curPieces)
-      .concat(allowPartner ? movablePiecesOnTrack(PARTNER_OF[playerColor], curPieces) : []);
-    // versuche groessten Schritt zuerst (greedy mit Backtracking)
-    for (const p of candidates) {
-      for (let s = remaining; s >= 1; s--) {
-        const sim = applySimpleMove(p, curPieces, s, 'f', true);
-        if (sim.ok) {
-          const result = rec(remaining - s, sim.newPieces, [...acc, { pieceId: p.id, steps: s }]);
-          if (result) return result;
-        }
-      }
+function aiSevenDistribution(pieces, owner, remaining) {
+  function search(curPieces, rem, path) {
+    if (rem === 0) return { path, pieces: curPieces };
+    const opts = sevenStepOptions(curPieces, owner);
+    if (opts.length === 0) return null;
+    const scored = opts.map(k => {
+      const r = applySevenStep(curPieces, owner, k);
+      return { k, newPieces: r.newPieces, captured: r.captured };
+    });
+    scored.sort((a, b) => (b.captured.length - a.captured.length) || (curPieces[owner][b.k] - curPieces[owner][a.k]));
+    for (let i = 0; i < scored.length; i++) {
+      const opt = scored[i];
+      const res = search(opt.newPieces, rem - 1, path.concat(opt.k));
+      if (res) return res;
     }
     return null;
   }
-  return rec(totalPoints, pieces, []);
+  return search(pieces, remaining, []);
+}
+function aiChooseCardToGivePartner(hand) {
+  if (hand.length === 0) return -1;
+  const priority = c => {
+    if (c.rank === 'JOKER') return 0;
+    if (c.rank === '7') return 1;
+    if (c.rank === '13' || c.rank === '11') return 2;
+    if (c.rank === 'SWAP') return 3;
+    return 5;
+  };
+  let idx = 0, best = -1;
+  hand.forEach((c, i) => { const pr = priority(c); if (pr > best) { best = pr; idx = i; } });
+  return idx;
 }
 
-// KI Tausch-Zielwahl: schlaegt bevorzugt gegnerische Figur, die am weitesten fortgeschritten ist
-function aiChooseSwapTarget(playerColor, pieces) {
-  const myPieces = pieces.filter(p => p.color === playerColor && p.state === 'track' && !isOnOwnStart(p));
-  let best = null;
-  let bestScore = -Infinity;
-  for (const mp of myPieces) {
-    const targets = getSwappableTargets(mp, pieces);
-    for (const t of targets) {
-      let score = 0;
-      if (t.color !== playerColor && TEAM_OF[t.color] !== TEAM_OF[playerColor]) {
-        // Gegner weit vorne tauschen ist gut (schickt ihn zurueck an unsere Position, uns nach vorne... eigentlich umgekehrt gut wenn WIR weit hinten sind)
-        score += 20;
-      } else {
-        score -= 20; // Partner tauschen eher vermeiden ausser strategisch, KI haelt es einfach
-      }
-      if (score > bestScore) { bestScore = score; best = { mine: mp, target: t }; }
-    }
+/* ============================== GAME ENGINE ============================== */
+
+function initialPieces() { return [0, 1, 2, 3].map(() => [null, null, null, null]); }
+
+function makeInitialState() {
+  const deck = shuffle(buildDeck());
+  return {
+    pieces: initialPieces(),
+    deck,
+    discard: [],
+    hands: [[], [], [], []],
+    dealerIndex: 0,
+    roundSeqIdx: 0,
+    turnIndex: 0,
+    phase: 'exchange',
+    exchangeSelections: [null, null, null, null],
+    log: ['Willkommen bei DOG! Team Grün+Blau gegen Team Gelb+Rot.'],
+    winnerTeam: null,
+    roundNumber: 1
+  };
+}
+
+function dealRound(state) {
+  let deck = state.deck, discard = state.discard;
+  const handSize = SEQUENCE[state.roundSeqIdx % SEQUENCE.length];
+  if (deck.length < handSize * 4) {
+    deck = shuffle(deck.concat(discard));
+    discard = [];
   }
-  return best;
+  const hands = [[], [], [], []];
+  for (let i = 0; i < handSize; i++) {
+    for (let p = 0; p < 4; p++) hands[p].push(deck.shift());
+  }
+  return {
+    ...state,
+    deck, discard, hands,
+    turnIndex: state.dealerIndex,
+    phase: 'exchange',
+    exchangeSelections: [null, null, null, null],
+    log: [`— Runde ${state.roundNumber}: ${handSize} Karten pro Spieler, Start: ${PLAYER_NAMES[state.dealerIndex]} —`, ...state.log]
+  };
 }
 
-/* =========================================================
-   REACT COMPONENTS
-   ========================================================= */
-
-function CardFace({ card }) {
-  const isSpecial = card.kind !== 'normal';
-  let label = card.value;
-  let sub = null;
-  if (card.kind === 'joker') { label = '?'; sub = 'JOKER'; }
-  if (card.kind === 'four') { sub = 'VOR/ZURÜCK'; }
-  if (card.kind === 'seven') { sub = 'TEILBAR'; }
-  if (card.kind === 'start11') { sub = 'START / 1 / 11'; }
-  if (card.kind === 'start13') { sub = 'START / 13'; }
-  if (card.kind === 'swap') { label = '⇄'; sub = 'TAUSCH'; }
-  return (
-    <React.Fragment>
-      <span className="corner tl">{label === '?' ? '?' : label}</span>
-      <span>{label}</span>
-      {sub && <span className="sub">{sub}</span>}
-      <span className="corner br">{label === '?' ? '?' : label}</span>
-    </React.Fragment>
-  );
+function applyExchange(state) {
+  const hands = state.hands.map(h => h.slice());
+  const sel = state.exchangeSelections;
+  const pairs = [[0, 2], [1, 3]];
+  const removed = [[], [], [], []];
+  pairs.forEach(pair => {
+    const a = pair[0], b = pair[1];
+    removed[a] = hands[a].splice(sel[a], 1);
+    removed[b] = hands[b].splice(sel[b], 1);
+  });
+  pairs.forEach(pair => {
+    const a = pair[0], b = pair[1];
+    hands[a].push(removed[b][0]);
+    hands[b].push(removed[a][0]);
+  });
+  return { ...state, hands, phase: 'play', exchangeSelections: [null, null, null, null], log: ['Kartentausch mit Partner abgeschlossen.', ...state.log] };
 }
 
-function Card({ card, selected, disabled, onClick }) {
-  const cls = `card ${card.kind === 'normal' ? 'normal' : 'special'} ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}`;
+function checkWinner(pieces) {
+  if (teamFinishedCount(pieces, 0) === 8) return 0;
+  if (teamFinishedCount(pieces, 1) === 8) return 1;
+  return null;
+}
+
+function nextTurnIndex(hands, from) {
+  for (let step = 1; step <= 4; step++) {
+    const cand = (from + step) % 4;
+    if (hands[cand].length > 0) return cand;
+  }
+  return -1;
+}
+
+/* ============================== REACT APP ============================== */
+
+function Card({ card, onClick, disabled }) {
+  const cls = ['card', card.rank === 'JOKER' ? 'joker-card' : (RED_RANKS.indexOf(card.rank) !== -1 ? 'red-card' : 'blue-card'),
+    disabled ? 'disabled' : ''].join(' ').trim();
   return (
     <div className={cls} onClick={disabled ? undefined : onClick}>
-      <CardFace card={card} />
+      {card.rank === 'JOKER' ? '?' : (card.rank === 'SWAP' ? '⇄' : card.rank)}
     </div>
   );
 }
 
-function BoardSVG({ pieces, selectablePieceIds, selectedPieceId, onPieceClick, highlightColor }) {
-  // Bahnfelder (grau/neutral) + farbige Startfelder markiert
-  const trackFields = [];
+function Piece({ cx, cy, colorKey, isCurrentPlayer }) {
+  return (
+    <circle cx={cx} cy={cy} r={CELL_R * 0.72} className={'piece' + (isCurrentPlayer ? ' current-turn' : '')}
+      fill={COLOR_HEX[colorKey]} />
+  );
+}
+
+function Board({ pieces, activePlayer }) {
+  const trackCells = [];
   for (let i = 0; i < TRACK_LEN; i++) {
-    const pos = trackFieldPos(i);
-    const colorIdx = COLORS.indexOf(COLORS.find((c, ci) => startTrackIndex(ci) === i));
-    const isStart = i % 16 === 0;
-    const startColor = isStart ? COLORS[i / 16] : null;
-    trackFields.push(
-      <circle
-        key={`t${i}`}
-        cx={pos.x} cy={pos.y} r={FIELD_R}
-        fill={isStart ? fieldColorForColor(startColor) : '#ece2cc'}
-        stroke={isStart ? fieldColorDarkForColor(startColor) : '#b8a781'}
-        strokeWidth={isStart ? 3 : 1.5}
-        opacity={isStart ? 0.35 : 1}
-      />
+    const pos = trackCellPos(i);
+    const sc = startColorOfAbs(i);
+    trackCells.push(
+      <circle key={'t' + i} cx={pos.x} cy={pos.y} r={CELL_R} className="cell-track"
+        fill={sc !== -1 ? COLOR_HEX[COLOR_KEYS[sc]] : '#efe3c8'} fillOpacity={sc !== -1 ? 0.55 : 1} />
     );
   }
-
-  const goalFields = [];
-  const homeFields = [];
-  COLORS.forEach((color, ci) => {
-    for (let g = 0; g < HOME_STRETCH_LEN; g++) {
-      const pos = goalFieldPos(ci, g);
-      goalFields.push(
-        <circle key={`g${color}${g}`} cx={pos.x} cy={pos.y} r={FIELD_R}
-          fill="#ece2cc" stroke={fieldColorDarkForColor(color)} strokeWidth={2} opacity={0.9} />
-      );
+  const homeCells = [];
+  const kennelCells = [];
+  COLOR_KEYS.forEach((ck, ci) => {
+    for (let s = 0; s < HOME_SLOTS; s++) {
+      const pos = homeCellPos(ci, s);
+      homeCells.push(<circle key={ck + 'h' + s} cx={pos.x} cy={pos.y} r={CELL_R} className="cell-home"
+        fill={COLOR_HEX[ck]} fillOpacity={0.35} />);
     }
-    for (let h = 0; h < 4; h++) {
-      const pos = homeFieldPos(ci, h);
-      homeFields.push(
-        <circle key={`h${color}${h}`} cx={pos.x} cy={pos.y} r={FIELD_R + 2}
-          fill={fieldColorForColor(color)} fillOpacity={0.15}
-          stroke={fieldColorDarkForColor(color)} strokeWidth={2} strokeDasharray="3,3" />
-      );
+    for (let s = 0; s < 4; s++) {
+      const pos = kennelPos(ci, s);
+      kennelCells.push(<circle key={ck + 'k' + s} cx={pos.x} cy={pos.y} r={CELL_R * 0.9} className="cell-kennel"
+        fill={COLOR_HEX[ck]} fillOpacity={0.22} />);
     }
   });
 
-  const pieceNodes = pieces.map(piece => {
-    const pos = piecePos(piece);
-    const isSelectable = selectablePieceIds && selectablePieceIds.includes(piece.id);
-    const isSelected = piece.id === selectedPieceId;
-    return (
-      <g key={piece.id}
-         className={`piece-token ${isSelectable ? 'selectable' : ''}`}
-         onClick={() => isSelectable && onPieceClick && onPieceClick(piece)}
-         style={{ transition: 'transform 0.3s ease' }}
-      >
-        <circle cx={pos.x} cy={pos.y} r={13} fill={fieldColorForColor(piece.color)}
-          stroke={isSelected ? '#fff' : fieldColorDarkForColor(piece.color)}
-          strokeWidth={isSelected ? 4 : 2.5} />
-        <circle cx={pos.x - 3} cy={pos.y - 3} r={4} fill="rgba(255,255,255,0.5)" />
-      </g>
-    );
+  const pieceEls = [];
+  pieces.forEach((arr, p) => {
+    const ck = COLOR_KEYS[p];
+    let kennelUsed = 0;
+    arr.forEach((rel, k) => {
+      let pos;
+      if (rel == null) {
+        pos = kennelPos(p, kennelUsed++);
+      } else if (rel < TRACK_LEN) {
+        pos = trackCellPos(absPos(p, rel));
+      } else {
+        pos = homeCellPos(p, rel - TRACK_LEN);
+      }
+      pieceEls.push(<Piece key={ck + k} cx={pos.x} cy={pos.y} colorKey={ck} isCurrentPlayer={p === activePlayer} />);
+    });
   });
+
+  const armLines = COLOR_KEYS.map((ck, ci) => {
+    const a = edgeStart(ci), b = { x: CX, y: CY };
+    return <line key={ck + 'arm'} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={COLOR_HEX[ck]} strokeWidth="10" strokeOpacity="0.28" />;
+  });
+  const outerFrame = `${SQ_MIN - 45},${SQ_MIN - 45} ${SQ_MAX + 45},${SQ_MIN - 45} ${SQ_MAX + 45},${SQ_MAX + 45} ${SQ_MIN - 45},${SQ_MAX + 45}`;
+  const trackFrame = `${SQ_MIN},${SQ_MIN} ${SQ_MAX},${SQ_MIN} ${SQ_MAX},${SQ_MAX} ${SQ_MIN},${SQ_MAX}`;
 
   return (
-    <svg className="board-svg" viewBox={`0 0 ${VB} ${VB}`}>
-      <circle cx={CENTER} cy={CENTER} r={R_OUTER + 80} fill="#7a4d28" />
-      <circle cx={CENTER} cy={CENTER} r={R_OUTER + 74} fill="#8f5c30" />
-      <circle cx={CENTER} cy={CENTER} r={R_OUTER + 34} fill="#c89a63" />
-      <circle cx={CENTER} cy={CENTER} r={R_OUTER + 28} fill="#e4c992" />
-      <circle cx={CENTER} cy={CENTER} r={140} fill="#3a2416" />
-      <text x={CENTER} y={CENTER - 6} textAnchor="middle" fontSize="34" fontWeight="900"
-        fill="#e0b04a" fontFamily="Georgia, serif" style={{letterSpacing:'2px'}}>DOG</text>
-      <text x={CENTER} y={CENTER + 18} textAnchor="middle" fontSize="11" fill="#c9b48a"
-        fontFamily="sans-serif" style={{letterSpacing:'3px'}}>KARTENSPIEL</text>
-      {homeFields}
-      {goalFields}
-      {trackFields}
-      {pieceNodes}
+    <svg width="640" height="640" viewBox="0 0 800 800">
+      <rect x={SQ_MIN - 45} y={SQ_MIN - 45} width={SQ_MAX - SQ_MIN + 90} height={SQ_MAX - SQ_MIN + 90} rx="18" fill="#153d1c" />
+      <polygon points={trackFrame} fill="none" stroke="#0f2913" strokeWidth="26" />
+      {armLines}
+      {trackCells}
+      {homeCells}
+      {kennelCells}
+      <rect x={CX - 55} y={CY - 55} width="110" height="110" fill="#0f2913" stroke={COLOR_HEX.green} strokeWidth="1"
+        transform={`rotate(45 ${CX} ${CY})`} />
+      <text x={CX} y={CY - 4} textAnchor="middle" fill="#e0b04a" fontSize="20" fontFamily="Georgia, serif" fontWeight="900">DOG</text>
+      <text x={CX} y={CY + 16} textAnchor="middle" fill="#cbb98a" fontSize="9">Den letzten beißen die Hunde</text>
+      {pieceEls}
     </svg>
   );
 }
 
-function SetupScreen({ onStart }) {
-  const [modes, setModes] = useState({ red: 'human', blue: 'ai', green: 'human', yellow: 'ai' });
-  const seatOrder = ['red', 'blue', 'green', 'yellow'];
-  return (
-    <div className="setup-wrap">
-      <div className="setup-card">
-        <h1 className="setup-title display-font">DOG</h1>
-        <p className="setup-sub">Den letzten beißen die Hunde</p>
-        <div className="seat-grid">
-          {seatOrder.map(color => (
-            <div key={color} className="seat-card" style={{borderColor: fieldColorForColor(color).replace('var(--','').replace(')','') ? undefined : undefined}}>
-              <div className="seat-dot" style={{background: `var(--${color === 'red' ? 'red' : color})`}}></div>
-              <div className="seat-info">
-                <div className="seat-name">{COLOR_NAMES[color]}</div>
-                <div className="seat-team">{TEAM_LABEL[TEAM_OF[color]]}</div>
-              </div>
-              <div className="seat-toggle">
-                <button className={modes[color] === 'human' ? 'active' : ''}
-                  onClick={() => setModes(m => ({ ...m, [color]: 'human' }))}>Mensch</button>
-                <button className={modes[color] === 'ai' ? 'active' : ''}
-                  onClick={() => setModes(m => ({ ...m, [color]: 'ai' }))}>KI</button>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="start-btn-wrap">
-          <button className="btn" onClick={() => onStart(modes)}>Spiel starten</button>
-        </div>
-        <p className="rules-note">
-          Rot &amp; Grün bilden ein Team, Blau &amp; Gelb das andere. Alle Mensch-Sitze werden
-          abwechselnd am selben Gerät gespielt (Hotseat). Wer zuerst alle 8 Team-Figuren im Ziel hat, gewinnt.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 function App() {
-  const [state, setState] = useState(null);
-  const [selectedCard, setSelectedCard] = useState(null);
-  const [pendingAction, setPendingAction] = useState(null); // {type:'awaitPieceForMove', options} | {type:'awaitSwapMine'} | {type:'awaitSwapTarget', mine} | {type:'sevenBuilder', remaining, assignments, allowPartner}
-  const [message, setMessage] = useState('');
-  const [exchangeSelection, setExchangeSelection] = useState({});
-  const aiTimeoutRef = useRef(null);
+  const [state, setState] = useState(() => dealRound(makeInitialState()));
+  const [pending, setPending] = useState(null);
+  const [sevenState, setSevenState] = useState(null);
+  const aiTimer = useRef(null);
 
-  const humanColors = state ? COLORS.filter(c => state.seatModes[c] === 'human') : [];
-  const viewColor = state ? COLORS[state.currentPlayerIdx] : null;
-  const isHumanTurn = state && state.seatModes[viewColor] === 'human';
+  const human = 0;
 
-  function startGame(seatModes) {
-    let s = createInitialGameState(seatModes);
-    s = startNewRound(s);
-    setState(s);
-    setMessage('Kartentausch: Wähle eine Karte, die du deinem Partner verdeckt gibst.');
+  function log(s, msg) { return { ...s, log: [msg, ...s.log].slice(0, 60) }; }
+
+  function advanceTurnOrRound(ns) {
+    if (ns.hands.every(h => h.length === 0)) {
+      ns.dealerIndex = (ns.dealerIndex + 1) % 4;
+      ns.roundSeqIdx = ns.roundSeqIdx + 1;
+      ns.roundNumber = ns.roundNumber + 1;
+      return dealRound(ns);
+    }
+    const nt = nextTurnIndex(ns.hands, ns.turnIndex);
+    ns.turnIndex = nt === -1 ? ns.turnIndex : nt;
+    return ns;
   }
 
-  function resetGame() {
-    setState(null);
-    setSelectedCard(null);
-    setPendingAction(null);
-    setExchangeSelection({});
-  }
+  function afterMoveCommon(prevState, cardIdx, applyResult, actingPlayer, extraLogParts) {
+    let ns = { ...prevState };
+    const hands = ns.hands.map(h => h.slice());
+    const played = hands[actingPlayer].splice(cardIdx, 1)[0];
+    ns.hands = hands;
+    ns.discard = ns.discard.concat([played]);
+    ns.pieces = applyResult.newPieces;
+    const capMsg = applyResult.captured && applyResult.captured.length
+      ? ` – schlägt ${applyResult.captured.map(c => PLAYER_NAMES[c.p]).join(', ')}!`
+      : '';
+    ns = log(ns, `${PLAYER_NAMES[actingPlayer]} spielt ${played.rank}${extraLogParts || ''}${capMsg}`);
 
-  /* ---------- EXCHANGE PHASE ---------- */
-  function offerExchangeCard(color, card) {
-    setState(s => {
-      if (s.exchangeOffers[color]) return s;
-      const offers = { ...s.exchangeOffers, [color]: card.id };
-      let ns = { ...s, exchangeOffers: offers };
-      ns = finishExchangeIfReady(ns);
+    const winner = checkWinner(ns.pieces);
+    if (winner !== null) {
+      ns.winnerTeam = winner;
+      ns.phase = 'gameover';
+      ns = log(ns, `🏆 Team ${winner === 0 ? 'Grün+Blau' : 'Gelb+Rot'} gewinnt das Spiel!`);
       return ns;
-    });
+    }
+    return advanceTurnOrRound(ns);
   }
 
-  function aiPickExchangeCard(color, hand) {
-    // KI gibt eher eine schwache/normale Karte ab, behaelt Sonderkarten wenn moeglich
-    const sorted = [...hand].sort((a, b) => {
-      const score = (c) => c.kind === 'normal' ? c.value : (c.kind === 'joker' ? 100 : 60);
-      return score(a) - score(b);
-    });
-    return sorted[0];
+  function forceDiscard(ns, player) {
+    let s = { ...ns };
+    const hands = s.hands.map(h => h.slice());
+    const discarded = hands[player];
+    hands[player] = [];
+    s.hands = hands;
+    s.discard = s.discard.concat(discarded);
+    if (discarded.length > 0) s = log(s, `${PLAYER_NAMES[player]} kann nicht ziehen und scheidet für diese Runde aus.`);
+    return advanceTurnOrRound(s);
   }
 
   useEffect(() => {
-    if (!state || state.phase !== 'exchange') return;
-    COLORS.forEach(color => {
-      if (state.seatModes[color] === 'ai' && !state.exchangeOffers[color] && state.hands[color].length > 0) {
-        const card = aiPickExchangeCard(color, state.hands[color]);
-        setTimeout(() => offerExchangeCard(color, card), 350);
-      }
-    });
-  }, [state && state.phase, state && JSON.stringify(state.exchangeOffers), state && state.roundNumber]);
-
-  /* ---------- PLAYING PHASE: check zugzwang / auto-eliminate ---------- */
-  useEffect(() => {
-    if (!state || state.phase !== 'playing') return;
-    const color = COLORS[state.currentPlayerIdx];
-    if (!state.activePlayers[color]) return;
-    const hand = state.hands[color];
+    if (state.phase !== 'play') return;
+    const p = state.turnIndex;
+    const hand = state.hands[p];
     if (hand.length === 0) return;
-    if (!playerHasAnyPlayableCard(color, state.pieces, hand)) {
-      const t = setTimeout(() => {
-        setState(s => {
-          if (!s || s.phase !== 'playing') return s;
-          const c = COLORS[s.currentPlayerIdx];
-          if (s.hands[c].length === 0 || playerHasAnyPlayableCard(c, s.pieces, s.hands[c])) return s;
-          let ns = eliminatePlayerForRound(s, c);
-          ns = advanceAfterCardPlayed(ns, c);
-          return ns;
-        });
-      }, 500);
-      return () => clearTimeout(t);
+    const anyPlay = hand.some(c => cardHasPlay(state.pieces, p, c.rank));
+    if (!anyPlay) {
+      aiTimer.current = setTimeout(() => setState(s => (s.phase === 'play' && s.turnIndex === p) ? forceDiscard(s, p) : s), p === human ? 500 : 700);
+      return () => clearTimeout(aiTimer.current);
     }
-  }, [state && state.phase, state && state.currentPlayerIdx, state && state.pieces, state && state.hands]);
+    if (p !== human) {
+      aiTimer.current = setTimeout(() => runAiTurn(), 700);
+      return () => clearTimeout(aiTimer.current);
+    }
+  }, [state.phase, state.turnIndex, state.hands, state.pieces]);
 
-  /* ---------- AI TURN ---------- */
   useEffect(() => {
-    if (!state || state.phase !== 'playing') return;
-    const color = COLORS[state.currentPlayerIdx];
-    if (state.seatModes[color] !== 'ai') return;
-    if (!state.activePlayers[color]) return;
-    if (state.hands[color].length === 0) return;
-    if (!playerHasAnyPlayableCard(color, state.pieces, state.hands[color])) return; // handled by other effect
-
-    aiTimeoutRef.current = setTimeout(() => {
-      setState(s => {
-        if (!s || s.phase !== 'playing') return s;
-        const c = COLORS[s.currentPlayerIdx];
-        if (s.seatModes[c] !== 'ai') return s;
-        return performAiTurn(s, c);
-      });
-    }, 700);
-    return () => clearTimeout(aiTimeoutRef.current);
-  }, [state && state.phase, state && state.currentPlayerIdx, state && JSON.stringify(state.hands[COLORS[state.currentPlayerIdx]])]);
-
-  function performAiTurn(s, color) {
-    const hand = s.hands[color];
-    const choice = aiChooseMove(color, s.pieces, hand);
-    if (!choice) {
-      let ns = eliminatePlayerForRound(s, color);
-      return advanceAfterCardPlayed(ns, color);
-    }
-    const { card, option } = choice;
-    let pieces = s.pieces;
-    let log = [...s.log];
-
-    if (option.kind === 'start') {
-      pieces = applyStart(s.pieces.find(p => p.id === option.pieceId), s.pieces);
-      log.push(`${COLOR_NAMES[color]} spielt ${cardLabel(card)} und bringt eine Figur ins Spiel.`);
-    } else if (option.kind === 'move') {
-      const piece = s.pieces.find(p => p.id === option.pieceId);
-      const sim = applySimpleMove(piece, s.pieces, option.steps, option.dir, option.isSeven);
-      pieces = sim.newPieces;
-      log.push(`${COLOR_NAMES[color]} spielt ${cardLabel(card)} (${option.steps} ${option.dir === 'b' ? 'zurück' : 'vor'}).${sim.captured.length ? ' Figur geschlagen!' : ''}`);
-    } else if (option.kind === 'sevenSplitExists') {
-      const dist = aiFindSevenDistribution(color, s.pieces, 7, false) || aiFindSevenDistribution(color, s.pieces, 7, true);
-      let curPieces = s.pieces;
-      let anyCaptured = false;
-      if (dist) {
-        for (const step of dist) {
-          const p = curPieces.find(pp => pp.id === step.pieceId);
-          const sim = applySimpleMove(p, curPieces, step.steps, 'f', true);
-          if (sim.ok) { curPieces = sim.newPieces; if (sim.captured.length) anyCaptured = true; }
-        }
-      }
-      pieces = curPieces;
-      log.push(`${COLOR_NAMES[color]} spielt die 7 und teilt sie auf.${anyCaptured ? ' Dabei wurden Figuren geschlagen!' : ''}`);
-    } else if (option.kind === 'swap') {
-      const swapChoice = aiChooseSwapTarget(color, s.pieces);
-      if (swapChoice) {
-        pieces = applySwap(swapChoice.mine, swapChoice.target, s.pieces);
-        log.push(`${COLOR_NAMES[color]} spielt Tausch: ${COLOR_NAMES[swapChoice.mine.color]} ⇄ ${COLOR_NAMES[swapChoice.target.color]}.`);
-      } else {
-        log.push(`${COLOR_NAMES[color]} spielt Tausch, aber es gibt kein gültiges Ziel — Karte verfällt.`);
-      }
-    }
-
-    const hands = { ...s.hands, [color]: s.hands[color].filter(c => c.id !== card.id) };
-    const discardPile = [...s.discardPile, card];
-    let ns = { ...s, pieces, hands, discardPile, log };
-    return advanceAfterCardPlayed(ns, color);
-  }
-
-  function cardLabel(card) {
-    if (card.kind === 'joker') return 'Joker';
-    if (card.kind === 'swap') return 'Tausch';
-    return `${card.value}`;
-  }
-
-  /* ---------- HUMAN CARD SELECTION ---------- */
-  function handleCardClick(card) {
-    if (!state || state.phase !== 'playing') return;
-    const color = COLORS[state.currentPlayerIdx];
-    if (state.seatModes[color] !== 'human') return;
-    const options = getCardPlayOptions(color, state.pieces, card);
-    if (options.length === 0) {
-      setMessage('Diese Karte kannst du gerade nicht spielen.');
-      return;
-    }
-    // Sonderfall: Tauschkarte hat kein gueltiges Ziel -> muss ohne Wirkung abgeworfen werden (Regel).
-    // Direkt ausfuehren, kein Figur-Klick noetig.
-    const onlyNoop = options.length === 1 && options[0].kind === 'swapNoop';
-    if (onlyNoop) {
-      commitCardPlayed(card, state.pieces, `${COLOR_NAMES[color]} spielt Tausch, aber es gibt kein gültiges Ziel — die Karte verfällt wirkungslos.`);
-      return;
-    }
-    setSelectedCard(card);
-    setMessage(`Karte ${cardLabel(card)} gewählt — wähle jetzt eine Figur auf dem Brett.`);
-  }
-
-  const selectablePieceIds = useMemo(() => {
-    if (!state || !selectedCard || state.phase !== 'playing') return [];
-    const color = COLORS[state.currentPlayerIdx];
-    if (state.seatModes[color] !== 'human') return [];
-    const options = getCardPlayOptions(color, state.pieces, selectedCard);
-    const ids = new Set();
-    options.forEach(o => {
-      if (o.kind === 'start' || o.kind === 'move') ids.add(o.pieceId);
-      if (o.kind === 'swap') {
-        state.pieces.filter(p => p.color === color && p.state === 'track' && !isOnOwnStart(p))
-          .forEach(p => ids.add(p.id));
-      }
-      if (o.kind === 'sevenSplitExists') {
-        movablePiecesOnTrack(color, state.pieces).forEach(p => ids.add(p.id));
-      }
-    });
-    return Array.from(ids);
-  }, [state, selectedCard]);
-
-  function commitCardPlayed(card, newPieces, logMsg) {
+    if (state.phase !== 'exchange') return;
     setState(s => {
-      const color = COLORS[s.currentPlayerIdx];
-      const hands = { ...s.hands, [color]: s.hands[color].filter(c => c.id !== card.id) };
-      const discardPile = [...s.discardPile, card];
-      const log = [...s.log, logMsg];
-      let ns = { ...s, pieces: newPieces, hands, discardPile, log };
-      return advanceAfterCardPlayed(ns, color);
+      if (s.phase !== 'exchange') return s;
+      const sel = s.exchangeSelections.slice();
+      let changed = false;
+      [1, 2, 3].forEach(p => {
+        if (sel[p] == null && s.hands[p].length > 0) { sel[p] = aiChooseCardToGivePartner(s.hands[p]); changed = true; }
+      });
+      if (!changed) return s;
+      return { ...s, exchangeSelections: sel };
     });
-    setSelectedCard(null);
-    setPendingAction(null);
-    setMessage('');
-  }
+  }, [state.phase, state.roundNumber]);
 
-  function handlePieceClick(piece) {
-    if (!state || !selectedCard) return;
-    const color = COLORS[state.currentPlayerIdx];
-    const card = selectedCard;
-    const kind = card.kind;
-
-    // START-Aktion (Figur im Haus)
-    if (piece.state === 'home' && (kind === 'start11' || kind === 'start13' || kind === 'joker')) {
-      if (!canStartPiece(piece, state.pieces)) { setMessage('Das eigene Startfeld ist blockiert.'); return; }
-      const newPieces = applyStart(piece, state.pieces);
-      commitCardPlayed(card, newPieces, `${COLOR_NAMES[color]} spielt ${cardLabel(card)} und bringt eine Figur ins Spiel.`);
-      return;
+  useEffect(() => {
+    if (state.phase !== 'exchange') return;
+    if (state.exchangeSelections.every(v => v != null)) {
+      setState(s => (s.phase === 'exchange' && s.exchangeSelections.every(v => v != null)) ? applyExchange(s) : s);
     }
+  }, [state.phase, state.exchangeSelections]);
 
-    if (piece.state !== 'track') return;
-
-    // TAUSCH
-    if (kind === 'swap') {
-      if (piece.color !== color) { setMessage('Wähle zuerst deine eigene Figur.'); return; }
-      if (isOnOwnStart(piece)) { setMessage('Diese Figur ist geschützt und kann nicht getauscht werden.'); return; }
-      const targets = getSwappableTargets(piece, state.pieces);
-      if (targets.length === 0) { setMessage('Kein gültiges Tauschziel — wähle eine andere Figur.'); return; }
-      setPendingAction({ type: 'awaitSwapTarget', mine: piece, targets });
-      setMessage('Wähle nun die Figur, mit der getauscht werden soll (auch Partner möglich).');
-      return;
-    }
-    if (pendingAction && pendingAction.type === 'awaitSwapTarget') {
-      const isValidTarget = pendingAction.targets.some(t => t.id === piece.id);
-      if (!isValidTarget) { setMessage('Ungültiges Ziel.'); return; }
-      const newPieces = applySwap(pendingAction.mine, piece, state.pieces);
-      commitCardPlayed(card, newPieces, `${COLOR_NAMES[color]} tauscht ${COLOR_NAMES[pendingAction.mine.color]} ⇄ ${COLOR_NAMES[piece.color]}.`);
-      return;
-    }
-
-    // SIEBEN: interaktive Aufteilung
-    if (kind === 'seven' || (kind === 'joker' && pendingAction && pendingAction.type === 'sevenBuilder')) {
-      startOrContinueSeven(piece);
-      return;
-    }
-
-    // Normale Bewegung / 4 / 11 / 13 / Joker(als Zahl)
-    if (piece.color !== color) { setMessage('Wähle eine eigene Figur.'); return; }
-
-    if (kind === 'four') {
-      setPendingAction({ type: 'awaitDirection', piece, card });
-      setMessage('4 gewählt: Vorwärts oder rückwärts?');
-      return;
-    }
-    if (kind === 'start11') {
-      setPendingAction({ type: 'awaitElevenValue', piece, card });
-      setMessage('Wähle: 1 Feld oder 11 Felder vorwärts?');
-      return;
-    }
-    if (kind === 'joker') {
-      setPendingAction({ type: 'awaitJokerValue', piece, card });
-      setMessage('Joker: Wähle den gewünschten Kartenwert.');
-      return;
-    }
-
-    // normal, start13 (nur 13), oder direkter Vorwaertszug
-    const steps = kind === 'start13' ? 13 : card.value;
-    const sim = applySimpleMove(piece, state.pieces, steps, 'f');
-    if (!sim.ok) { setMessage(sim.reason || 'Zug nicht möglich.'); return; }
-    commitCardPlayed(card, sim.newPieces, `${COLOR_NAMES[color]} spielt ${cardLabel(card)} (${steps} vor).${sim.captured.length ? ' Figur geschlagen!' : ''}`);
-  }
-
-  function startOrContinueSeven(piece) {
-    const color = COLORS[state.currentPlayerIdx];
-    const card = selectedCard;
-    const isOwn = piece.color === color;
-    const isPartner = piece.color === PARTNER_OF[color];
-
-    setPendingAction(prev => {
-      const base = (prev && prev.type === 'sevenBuilder') ? prev : { type: 'sevenBuilder', remaining: 7, assignments: [], pieces: state.pieces, lastPieceMoved: false };
-      if (!isOwn && !isPartner) { setMessage('Die 7 kann nur auf eigene Figuren (oder ausnahmsweise Partner) verteilt werden.'); return prev; }
-      // Frage Schrittzahl per kleinem Inline-Picker -> vereinfachen: wir bieten Buttons 1..remaining im pendingAction Overlay
-      return { ...base, awaitingStepsFor: piece.id, isPartnerPiece: isPartner };
-    });
-  }
-
-  function applySevenStep(steps) {
-    setPendingAction(prev => {
-      if (!prev || prev.type !== 'sevenBuilder' || !prev.awaitingStepsFor) return prev;
-      const piece = prev.pieces.find(p => p.id === prev.awaitingStepsFor);
-      const sim = applySimpleMove(piece, prev.pieces, steps, 'f', true);
-      if (!sim.ok) { setMessage(sim.reason || 'Ungültiger Teilschritt.'); return prev; }
-      const remaining = prev.remaining - steps;
-      const assignments = [...prev.assignments, { pieceId: piece.id, steps }];
-      const newState = { ...prev, remaining, assignments, pieces: sim.newPieces, awaitingStepsFor: null };
-      if (remaining === 0) {
-        // fertig -> commit
-        setTimeout(() => {
-          const color = COLORS[state.currentPlayerIdx];
-          commitCardPlayed(selectedCard, newState.pieces, `${COLOR_NAMES[color]} spielt die 7 und teilt sie auf ${assignments.length} Figur(en) auf.`);
-        }, 50);
-      } else {
-        setMessage(`Noch ${remaining} Punkte zu verteilen — wähle die nächste Figur.`);
+  function runAiTurn() {
+    setState(s => {
+      if (s.phase !== 'play') return s;
+      const p = s.turnIndex;
+      if (p === human) return s;
+      const hand = s.hands[p];
+      const choice = chooseAiPlay(s.pieces, p, hand);
+      if (!choice) return forceDiscard(s, p);
+      if (choice.seven) {
+        const owner = controllableOwner(s.pieces, p);
+        const dist = aiSevenDistribution(s.pieces, owner, 7);
+        if (!dist) return forceDiscard(s, p);
+        let pieces = s.pieces;
+        let totalCaptured = [];
+        dist.path.forEach(k => {
+          const r = applySevenStep(pieces, owner, k);
+          pieces = r.newPieces;
+          totalCaptured = totalCaptured.concat(r.captured);
+        });
+        return afterMoveCommon(s, choice.cardIdx, { newPieces: pieces, captured: totalCaptured }, p, ' (7 aufgeteilt)');
       }
-      return newState;
+      return afterMoveCommon(s, choice.cardIdx, choice.play.apply, p, ': ' + choice.play.label);
     });
   }
 
-  function cancelSevenAssignment() {
-    setPendingAction(null);
-    setMessage('Sieben-Verteilung abgebrochen. Wähle erneut eine Karte.');
-    setSelectedCard(null);
-  }
-
-  function chooseDirection(dir) {
-    if (!pendingAction || pendingAction.type !== 'awaitDirection') return;
-    const { piece, card } = pendingAction;
-    const color = COLORS[state.currentPlayerIdx];
-    const sim = applySimpleMove(piece, state.pieces, 4, dir);
-    if (!sim.ok) { setMessage(sim.reason || 'Zug nicht möglich.'); return; }
-    commitCardPlayed(card, sim.newPieces, `${COLOR_NAMES[color]} spielt 4 (${dir === 'f' ? 'vorwärts' : 'rückwärts'}).${sim.captured.length ? ' Figur geschlagen!' : ''}`);
-  }
-
-  function chooseElevenValue(val) {
-    if (!pendingAction || pendingAction.type !== 'awaitElevenValue') return;
-    const { piece, card } = pendingAction;
-    const color = COLORS[state.currentPlayerIdx];
-    const sim = applySimpleMove(piece, state.pieces, val, 'f');
-    if (!sim.ok) { setMessage(sim.reason || 'Zug nicht möglich.'); return; }
-    commitCardPlayed(card, sim.newPieces, `${COLOR_NAMES[color]} spielt 11 (${val} vor).${sim.captured.length ? ' Figur geschlagen!' : ''}`);
-  }
-
-  function chooseJokerValue(val) {
-    if (!pendingAction || pendingAction.type !== 'awaitJokerValue') return;
-    const { piece, card } = pendingAction;
-    const color = COLORS[state.currentPlayerIdx];
-    if (val === 'back4') {
-      const sim = applySimpleMove(piece, state.pieces, 4, 'b');
-      if (!sim.ok) { setMessage(sim.reason); return; }
-      commitCardPlayed(card, sim.newPieces, `${COLOR_NAMES[color]} nutzt den Joker als 4 rückwärts.`);
+  function humanCardClick(cardIdx) {
+    if (state.phase !== 'play' || state.turnIndex !== human) return;
+    const card = state.hands[human][cardIdx];
+    if (!cardHasPlay(state.pieces, human, card.rank)) return;
+    if (card.rank === '7') {
+      const owner = controllableOwner(state.pieces, human);
+      setSevenState({ cardIdx, owner, remaining: 7, working: state.pieces, captured: [] });
       return;
     }
-    const sim = applySimpleMove(piece, state.pieces, val, 'f');
-    if (!sim.ok) { setMessage(sim.reason || 'Zug nicht möglich.'); return; }
-    commitCardPlayed(card, sim.newPieces, `${COLOR_NAMES[color]} nutzt den Joker als ${val}.`);
+    const opts = effectiveOptions(state.pieces, human, card.rank);
+    const allPlays = opts.simple.concat(opts.swap);
+    if (opts.seven) allPlays.push({ label: 'Joker als 7: Punkte aufteilen', kind: 'jokerSeven' });
+    if (allPlays.length === 1 && allPlays[0].kind !== 'jokerSeven') {
+      setState(s => afterMoveCommon(s, cardIdx, allPlays[0].apply, human, ': ' + allPlays[0].label));
+      return;
+    }
+    setPending({ cardIdx, options: allPlays, rank: card.rank });
   }
 
-  if (!state) {
-    return <SetupScreen onStart={startGame} />;
+  function choosePendingOption(opt) {
+    const cardIdx = pending.cardIdx;
+    setPending(null);
+    if (opt.kind === 'jokerSeven') {
+      const owner = controllableOwner(state.pieces, human);
+      setSevenState({ cardIdx, owner, remaining: 7, working: state.pieces, captured: [] });
+      return;
+    }
+    setState(s => afterMoveCommon(s, cardIdx, opt.apply, human, ': ' + opt.label));
   }
 
-  const currentColor = COLORS[state.currentPlayerIdx];
+  function sevenClickPiece(k) {
+    setSevenState(prev => {
+      const r = applySevenStep(prev.working, prev.owner, k);
+      const newRemaining = prev.remaining - 1;
+      const newCaptured = prev.captured.concat(r.captured);
+      if (newRemaining === 0) {
+        setState(s => afterMoveCommon(s, prev.cardIdx, { newPieces: r.newPieces, captured: newCaptured }, human, ' (7 aufgeteilt)'));
+        return null;
+      }
+      return { ...prev, working: r.newPieces, remaining: newRemaining, captured: newCaptured };
+    });
+  }
+  function cancelSeven() { setSevenState(null); }
+
+  function selectExchangeCard(cardIdx) {
+    if (state.exchangeSelections[human] != null) return;
+    setState(s => {
+      const a = s.exchangeSelections.slice();
+      a[human] = cardIdx;
+      return { ...s, exchangeSelections: a };
+    });
+  }
+
+  const isHumanTurn = state.phase === 'play' && state.turnIndex === human;
+  const humanHand = state.hands[human] || [];
 
   return (
-    <React.Fragment>
-      <div className="topbar">
-        <div className="brand display-font">DOG <small>Kartenspiel</small></div>
-        <div className="status-pill">
-          <span className="swatch" style={{background: `var(--${currentColor})`}}></span>
-          {state.phase === 'exchange' && 'Kartentausch läuft…'}
-          {state.phase === 'playing' && `${COLOR_NAMES[currentColor]} ist am Zug`}
-          {state.phase === 'gameOver' && `${TEAM_LABEL[state.winnerTeam]} hat gewonnen!`}
+    <div>
+      <h1 className="title">🐾 DOG</h1>
+      <div className="subtitle">Den letzten beißen die Hunde — 4-Spieler Teamvariante</div>
+      <div className="layout">
+        <div className="board-wrap">
+          <Board pieces={state.pieces} activePlayer={state.turnIndex} />
         </div>
-        <button className="btn secondary" onClick={resetGame}>Neues Spiel</button>
-      </div>
-
-      <div className="game-wrap">
-        <div className="players-strip">
-          {COLORS.map((c, i) => (
-            <div key={c} className={`player-chip ${state.currentPlayerIdx === i ? 'active' : ''}`}>
-              <div className="pname"><span className="swatch" style={{background:`var(--${c})`}}></span>{COLOR_NAMES[c]} {state.seatModes[c]==='ai' ? '🤖' : '🧑'}</div>
-              <div className="pmeta">{TEAM_LABEL[TEAM_OF[c]]} · {state.hands[c].length} Karten · {!state.activePlayers[c] && state.phase==='playing' ? 'ausgesetzt' : ''}</div>
+        <div className="side-panel">
+          <div className="panel-box">
+            <h3>Status</h3>
+            <div className="status-line">
+              {state.phase === 'gameover'
+                ? `Spiel beendet — Team ${state.winnerTeam === 0 ? 'Grün+Blau' : 'Gelb+Rot'} gewinnt!`
+                : state.phase === 'exchange'
+                  ? 'Kartentausch mit Partner läuft…'
+                  : <span>Am Zug: <span className="active-player" style={{ color: COLOR_HEX[COLOR_KEYS[state.turnIndex]] }}>{PLAYER_NAMES[state.turnIndex]}</span></span>}
             </div>
-          ))}
-        </div>
-
-        <div className="board-area">
-          <BoardSVG
-            pieces={state.pieces}
-            selectablePieceIds={
-              pendingAction && pendingAction.type === 'awaitSwapTarget'
-                ? pendingAction.targets.map(t => t.id)
-                : (pendingAction && pendingAction.type === 'sevenBuilder' && !pendingAction.awaitingStepsFor
-                    ? [...movablePiecesOnTrack(currentColor, state.pieces).map(p=>p.id), ...movablePiecesOnTrack(PARTNER_OF[currentColor], state.pieces).map(p=>p.id)]
-                    : selectablePieceIds)
-            }
-            selectedPieceId={pendingAction && pendingAction.mine ? pendingAction.mine.id : (pendingAction && pendingAction.piece ? pendingAction.piece.id : null)}
-            onPieceClick={isHumanTurn ? handlePieceClick : undefined}
-          />
-        </div>
-
-        {/* Sonderaktions-Overlays */}
-        {pendingAction && pendingAction.type === 'awaitDirection' && (
-          <div className="action-bar">
-            <button className="btn" onClick={() => chooseDirection('f')}>4 vorwärts</button>
-            <button className="btn" onClick={() => chooseDirection('b')}>4 rückwärts</button>
-            <button className="btn secondary" onClick={() => { setPendingAction(null); setSelectedCard(null); }}>Abbrechen</button>
-          </div>
-        )}
-        {pendingAction && pendingAction.type === 'awaitElevenValue' && (
-          <div className="action-bar">
-            <button className="btn" onClick={() => chooseElevenValue(1)}>1 vorwärts</button>
-            <button className="btn" onClick={() => chooseElevenValue(11)}>11 vorwärts</button>
-            <button className="btn secondary" onClick={() => { setPendingAction(null); setSelectedCard(null); }}>Abbrechen</button>
-          </div>
-        )}
-        {pendingAction && pendingAction.type === 'awaitJokerValue' && (
-          <div className="action-bar" style={{flexWrap:'wrap'}}>
-            {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(v => (
-              <button key={v} className="btn" style={{padding:'6px 10px'}} onClick={() => chooseJokerValue(v)}>{v}</button>
-            ))}
-            <button className="btn" onClick={() => chooseJokerValue('back4')}>4 zurück</button>
-            <button className="btn secondary" onClick={() => { setPendingAction(null); setSelectedCard(null); }}>Abbrechen</button>
-          </div>
-        )}
-        {pendingAction && pendingAction.type === 'sevenBuilder' && pendingAction.awaitingStepsFor && (
-          <div className="action-bar" style={{flexWrap:'wrap'}}>
-            <span style={{fontSize:'12px', color:'#d8c9ac'}}>Schritte für gewählte Figur (max {pendingAction.remaining}):</span>
-            {Array.from({length: pendingAction.remaining}, (_, k) => k + 1).map(v => (
-              <button key={v} className="btn" style={{padding:'6px 10px'}} onClick={() => applySevenStep(v)}>{v}</button>
+            {COLOR_KEYS.map((ck, p) => (
+              <div className="team-row" key={ck}>
+                <span><span className="swatch" style={{ background: COLOR_HEX[ck] }}></span>{PLAYER_NAMES[p]} (Team {teamOf(p) === 0 ? 'Grün/Blau' : 'Gelb/Rot'})</span>
+                <span>{teamFinishedCount(state.pieces, teamOf(p)) === 8 ? '✔' : `${state.pieces[p].filter(r => r != null && r >= TRACK_LEN).length}/4 im Ziel`}</span>
+              </div>
             ))}
           </div>
-        )}
-        {pendingAction && pendingAction.type === 'sevenBuilder' && !pendingAction.awaitingStepsFor && (
-          <div className="action-bar">
-            <span className="msg-box">Noch {pendingAction.remaining} Punkte übrig — klicke eine Figur auf dem Brett an.</span>
-            <button className="btn secondary" onClick={cancelSevenAssignment}>Abbrechen</button>
+
+          <div className="panel-box">
+            <h3>Deine Hand (Grün)</h3>
+            {state.phase === 'exchange' ? (
+              <div>
+                <div style={{ fontSize: '0.82em', marginBottom: 6 }}>
+                  {state.exchangeSelections[human] == null ? 'Wähle eine Karte, die du verdeckt an deinen Partner (Blau) abgibst.' : 'Warte auf die anderen Spieler…'}
+                </div>
+                <div className="hand-row">
+                  {humanHand.map((c, i) => (
+                    <Card key={i} card={c} onClick={() => selectExchangeCard(i)}
+                      disabled={state.exchangeSelections[human] != null && state.exchangeSelections[human] !== i} />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="hand-row">
+                {humanHand.map((c, i) => (
+                  <Card key={i} card={c}
+                    disabled={!isHumanTurn || !cardHasPlay(state.pieces, human, c.rank)}
+                    onClick={() => humanCardClick(i)} />
+                ))}
+                {humanHand.length === 0 && <div style={{ fontSize: '0.82em', opacity: 0.7 }}>Keine Karten mehr diese Runde.</div>}
+              </div>
+            )}
           </div>
-        )}
 
-        {message && (!pendingAction || pendingAction.type === 'awaitSwapTarget') && (
-          <div className="action-bar"><div className="msg-box">{message}</div></div>
-        )}
-
-        {/* Hand-Bereich fuer aktuellen Spieler (nur wenn human) */}
-        {state.phase === 'playing' && isHumanTurn && (
-          <div className="hand-area">
-            <div className="hand-title">
-              <span>Hand von {COLOR_NAMES[currentColor]}</span>
-              <span>{state.hands[currentColor].length} Karte(n)</span>
+          <div className="panel-box">
+            <h3>Verlauf</h3>
+            <div className="log-box">
+              {state.log.map((l, i) => <div className="log-line" key={i}>{l}</div>)}
             </div>
-            <div className="hand-cards">
-              {state.hands[currentColor].length === 0 && <span className="empty-hand-msg">Keine Karten mehr.</span>}
-              {state.hands[currentColor].map(card => (
-                <Card key={card.id} card={card}
-                  selected={selectedCard && selectedCard.id === card.id}
-                  disabled={getCardPlayOptions(currentColor, state.pieces, card).length === 0}
-                  onClick={() => handleCardClick(card)} />
-              ))}
-            </div>
           </div>
-        )}
-
-        {state.phase === 'playing' && !isHumanTurn && (
-          <div className="hand-area">
-            <div className="hand-title"><span className="pulse">{COLOR_NAMES[currentColor]} (KI) überlegt…</span></div>
-          </div>
-        )}
-
-        {/* Kartentausch-Phase UI */}
-        {state.phase === 'exchange' && (
-          <ExchangePanel state={state} onOffer={offerExchangeCard} />
-        )}
-
-        {/* Log */}
-        <div className="hand-area" style={{maxHeight: 140, overflowY: 'auto'}}>
-          <div className="hand-title"><span>Verlauf</span></div>
-          {[...state.log].slice(-8).reverse().map((l, i) => (
-            <div key={i} style={{fontSize: 12, color: '#cbb99a', padding: '2px 0'}}>{l}</div>
-          ))}
         </div>
       </div>
 
-      {state.phase === 'gameOver' && (
-        <div className="overlay">
-          <div className="overlay-card">
-            <h2 className="display-font">🏆 {TEAM_LABEL[state.winnerTeam]} gewinnt!</h2>
-            <p>Alle 8 Figuren sind im Ziel. Danke fürs Spielen!</p>
-            <button className="btn" onClick={resetGame}>Neues Spiel starten</button>
+      {pending && (
+        <div className="modal-overlay" onClick={() => setPending(null)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <h3>Karte {pending.rank}: Zug wählen</h3>
+            {pending.options.length === 0 && <div>Kein gültiger Zug möglich.</div>}
+            {pending.options.map((opt, i) => (
+              <div key={i} className="option-btn" onClick={() => choosePendingOption(opt)}>{opt.label}</div>
+            ))}
+            <button className="btn secondary" onClick={() => setPending(null)}>Abbrechen</button>
           </div>
         </div>
       )}
-    </React.Fragment>
-  );
-}
 
-function ExchangePanel({ state, onOffer }) {
-  const currentHumanColor = COLORS.find(c => state.seatModes[c] === 'human' && !state.exchangeOffers[c]);
-  if (!currentHumanColor) {
-    return (
-      <div className="hand-area">
-        <div className="hand-title"><span className="pulse">Karten werden getauscht…</span></div>
-      </div>
-    );
-  }
-  return (
-    <div className="hand-area">
-      <div className="hand-title">
-        <span>{COLOR_NAMES[currentHumanColor]}: Wähle eine Karte für {COLOR_NAMES[PARTNER_OF[currentHumanColor]]} (deinen Partner)</span>
-      </div>
-      <div className="hand-cards">
-        {state.hands[currentHumanColor].map(card => (
-          <Card key={card.id} card={card} onClick={() => onOffer(currentHumanColor, card)} />
-        ))}
-      </div>
+      {sevenState && (
+        <div className="modal-overlay">
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <h3>7 aufteilen — noch {sevenState.remaining} Punkte</h3>
+            <div style={{ fontSize: '0.85em', marginBottom: 8 }}>Klicke eine Figur an, um ihr den nächsten Punkt zu geben. Alle 7 Punkte müssen verteilt werden.</div>
+            {[0, 1, 2, 3].map(k => {
+              const opts = sevenStepOptions(sevenState.working, sevenState.owner);
+              const can = opts.indexOf(k) !== -1;
+              const rel = sevenState.working[sevenState.owner][k];
+              const label = rel == null ? 'im Start (nicht auf der Bahn)' : (rel >= TRACK_LEN ? `im Ziel-Bereich (Feld ${rel - TRACK_LEN + 1})` : `Feld ${rel}`);
+              return (
+                <div key={k} className="option-btn" style={{ opacity: can ? 1 : 0.4, cursor: can ? 'pointer' : 'not-allowed' }}
+                  onClick={() => can && sevenClickPiece(k)}>
+                  {PLAYER_NAMES[sevenState.owner]} Figur {k + 1} — {label} {can ? '→ +1' : ''}
+                </div>
+              );
+            })}
+            <button className="btn secondary" onClick={cancelSeven}>Zurücksetzen</button>
+          </div>
+        </div>
+      )}
+
+      <footer className="credits">Inoffizielle digitale Umsetzung von DOG (Schmidt Spiele) — nur zum privaten Spielvergnügen.</footer>
     </div>
   );
 }
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
-
-
-
-
-
-
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 </script>
-
 </body>
 </html>
