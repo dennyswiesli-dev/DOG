@@ -46,16 +46,21 @@
 
   .hand-row { display: flex; gap: 6px; flex-wrap: wrap; }
   .card {
-    width: 46px; height: 64px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
-    font-weight: 800; font-size: 1.1em; cursor: pointer; user-select: none; position: relative;
-    border: 2px solid rgba(0,0,0,0.4); color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    width: 52px; height: 74px; border-radius: 7px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; user-select: none; position: relative;
+    border: 2px solid rgba(255,255,255,0.55); color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
     transition: transform 0.12s;
   }
   .card:hover:not(.disabled) { transform: translateY(-4px); }
   .card.disabled { opacity: 0.35; cursor: not-allowed; }
-  .card.blue-card { background: linear-gradient(160deg, var(--blue), var(--blue-dark)); }
-  .card.red-card { background: linear-gradient(160deg, var(--red), var(--red-dark)); }
-  .card.joker-card { background: linear-gradient(160deg, var(--gold), #9c6b1e); color: #2a1d12; }
+  .card.blue-card { background: radial-gradient(ellipse at center, var(--blue) 0%, var(--blue-dark) 100%); }
+  .card.red-card { background: radial-gradient(ellipse at center, var(--red) 0%, var(--red-dark) 100%); }
+  .card.joker-card { background: radial-gradient(ellipse at center, #e6b94a 0%, #9c6b1e 100%); color: #2a1d12; }
+  .card-main { font-weight: 900; font-size: 1.5em; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+  .card-corner { position: absolute; font-size: 0.62em; font-weight: 800; opacity: 0.9; }
+  .card-corner-tl { top: 4px; left: 6px; }
+  .card-corner-br { bottom: 4px; right: 6px; transform: rotate(180deg); }
+  .card-icon { position: absolute; bottom: 5px; left: 7px; font-size: 0.6em; opacity: 0.85; }
 
   button.btn {
     background: linear-gradient(160deg, var(--gold), #9c6b1e); color: #2a1d12; border: none; border-radius: 6px;
@@ -87,6 +92,25 @@
   .piece.current-turn { filter: drop-shadow(0 0 5px #fff); }
   .status-line { font-size: 0.9em; text-align: center; margin: 6px 0; min-height: 1.4em; }
   .active-player { font-weight: 800; }
+  .turn-banner {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    color: #fff; font-weight: 800; padding: 8px 10px; border-radius: 8px; margin-bottom: 10px;
+    font-size: 0.92em; text-shadow: 0 1px 2px rgba(0,0,0,0.5); box-shadow: 0 0 0 2px rgba(255,255,255,0.25) inset;
+    animation: turnPulse 1.6s ease-in-out infinite;
+  }
+  .turn-banner-dot { width: 9px; height: 9px; border-radius: 50%; background: #fff; box-shadow: 0 0 6px #fff; }
+  @keyframes turnPulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.18); } }
+  .team-row-active { background: rgba(255,255,255,0.08); border-radius: 6px; padding-left: 4px; font-weight: 700; }
+  .team-row-won { color: var(--gold); font-weight: 800; }
+  .gameover-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.72); display: flex; align-items: center; justify-content: center; z-index: 60;
+  }
+  .gameover-box {
+    background: linear-gradient(160deg, #2a1d12, #16100a); border: 3px solid var(--gold); border-radius: 14px;
+    padding: 30px 40px; text-align: center; box-shadow: 0 0 40px rgba(224,176,74,0.4);
+  }
+  .gameover-box h2 { color: var(--gold); font-family: Georgia, serif; font-size: 1.8em; margin: 0 0 10px; }
+  .gameover-box p { margin: 0 0 16px; opacity: 0.85; }
   footer.credits { opacity: 0.5; font-size: 0.72em; margin-top: 14px; text-align: center; }
 </style>
 </head>
@@ -140,19 +164,39 @@ const CORNERS = [
   { x: SQ_MAX, y: SQ_MAX }, // bottom-right-> edge for color 2 (blue)
   { x: SQ_MIN, y: SQ_MAX }  // bottom-left -> edge for color 3 (red)
 ];
-const HOME_T = [0.20, 0.40, 0.60, 0.80]; // slot 0 = near corner/track, slot 3 = near center
+const HOME_T = [0.16, 0.40, 0.64, 0.88]; // slot 0 = near track entrance, slot 3 = deepest (last before goal)
 
 function edgeStart(colorIndex) { return CORNERS[colorIndex]; }
 function edgeEnd(colorIndex) { return CORNERS[(colorIndex + 1) % 4]; }
 function lerp(a, b, t) { return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; }
-
+function quadBezier(p0, c, p1, t) {
+  const mt = 1 - t;
+  return {
+    x: mt * mt * p0.x + 2 * mt * t * c.x + t * t * p1.x,
+    y: mt * mt * p0.y + 2 * mt * t * c.y + t * t * p1.y
+  };
+}
+// Each home lane loops from its entrance out toward its corner, then curves into the center —
+// echoing the looping arcs on the physical board rather than a straight spoke.
+function homeArmControlPoint(colorIndex) {
+  const entrance = edgeStart(colorIndex);
+  const center = { x: CX, y: CY };
+  const mid = lerp(entrance, center, 0.5);
+  const dx = center.x - entrance.x, dy = center.y - entrance.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len, ny = dx / len; // perpendicular
+  const bow = 95;
+  return { x: mid.x + nx * bow, y: mid.y + ny * bow };
+}
 function trackCellPos(absIndex) {
   const c = Math.floor(absIndex / PER_COLOR);
   const f = (absIndex % PER_COLOR) / PER_COLOR;
   return lerp(edgeStart(c), edgeEnd(c), f);
 }
 function homeCellPos(colorIndex, slot) {
-  return lerp(edgeStart(colorIndex), { x: CX, y: CY }, HOME_T[slot]);
+  const entrance = edgeStart(colorIndex);
+  const ctrl = homeArmControlPoint(colorIndex);
+  return quadBezier(entrance, ctrl, { x: CX, y: CY }, HOME_T[slot]);
 }
 function kennelPos(colorIndex, slot) {
   const corner = edgeStart(colorIndex);
@@ -196,34 +240,68 @@ function controllableOwner(pieces, actingPlayer) {
   return partnerFinished ? actingPlayer : partner;
 }
 
+const LAST_HOME_REL = TRACK_LEN + HOME_SLOTS - 1; // 67: final goal slot
+
 function tryMove(pieces, owner, k, steps) {
   const rel = pieces[owner][k];
-  if (rel == null || rel >= TRACK_LEN + HOME_SLOTS - 1) return null; // kennel or already fully finished
+  if (rel == null || rel > LAST_HOME_REL) return null; // kennel or already fully finished
   if (steps < 0 && rel >= TRACK_LEN) return null; // cannot move backward inside the home stretch
   const captured = [];
   const newPieces = pieces.map(arr => arr.slice());
 
   if (steps > 0) {
+    if (rel >= TRACK_LEN) {
+      // Already inside the home stretch: must land exactly within it, no passing over own pieces.
+      const dest = rel + steps;
+      if (dest > LAST_HOME_REL) return null;
+      for (let mid = rel + 1; mid <= dest; mid++) {
+        if (ownPieceAtRel(pieces, owner, mid, k) !== -1) return null;
+      }
+      newPieces[owner][k] = dest;
+      return { newPieces, captured: [], enteredHome: true };
+    }
+
+    const dest = rel + steps; // still relative to "leaving the start" for this lap
+    if (dest >= TRACK_LEN && dest <= LAST_HOME_REL) {
+      // Exact count to enter the home stretch.
+      let cur = rel;
+      for (let s = 1; s <= steps; s++) {
+        const nextRel = cur + 1;
+        if (nextRel <= TRACK_LEN - 1) {
+          const abs = absPos(owner, nextRel);
+          const startColor = startColorOfAbs(abs);
+          if (startColor !== -1 && isStartProtected(pieces, startColor)) return null;
+          if (s === steps) {
+            const occ = findOccupantAtAbs(pieces, abs, owner, k);
+            if (occ) captured.push(occ);
+          }
+        } else {
+          if (ownPieceAtRel(pieces, owner, nextRel, k) !== -1) return null;
+        }
+        cur = nextRel;
+      }
+      newPieces[owner][k] = dest;
+      captured.forEach(c => { newPieces[c.p][c.k] = null; });
+      return { newPieces, captured, enteredHome: true };
+    }
+
+    // Either stays fully on the shared track, or overshoots the home entrance entirely:
+    // in both cases the piece keeps travelling the shared 64-space loop (no exact count to enter Ziel).
     let cur = rel;
     for (let s = 1; s <= steps; s++) {
-      const nextRel = cur + 1;
-      if (nextRel <= TRACK_LEN - 1) {
-        const abs = absPos(owner, nextRel);
-        const startColor = startColorOfAbs(abs);
-        if (startColor !== -1 && isStartProtected(pieces, startColor)) {
-          return null; // blocked, cannot pass or land (regular card, not the 7)
-        }
-        if (s === steps) {
-          const occ = findOccupantAtAbs(pieces, abs, owner, k);
-          if (occ) captured.push(occ);
-        }
-      } else {
-        const homeSlot = nextRel - TRACK_LEN;
-        if (homeSlot > HOME_SLOTS - 1) return null;
-        if (ownPieceAtRel(pieces, owner, nextRel, k) !== -1) return null;
+      const nextRel = (cur + 1) % TRACK_LEN;
+      const abs = absPos(owner, nextRel);
+      const startColor = startColorOfAbs(abs);
+      if (startColor !== -1 && isStartProtected(pieces, startColor)) return null;
+      if (s === steps) {
+        const occ = findOccupantAtAbs(pieces, abs, owner, k);
+        if (occ) captured.push(occ);
       }
       cur = nextRel;
     }
+    newPieces[owner][k] = cur;
+    captured.forEach(c => { newPieces[c.p][c.k] = null; });
+    return { newPieces, captured, enteredHome: false };
   } else if (steps < 0) {
     let cur = rel;
     const n = -steps;
@@ -239,14 +317,8 @@ function tryMove(pieces, owner, k, steps) {
     newPieces[owner][k] = cur;
     captured.forEach(c => { newPieces[c.p][c.k] = null; });
     return { newPieces, captured, enteredHome: false };
-  } else {
-    return null;
   }
-
-  const finalRel = rel + steps;
-  newPieces[owner][k] = finalRel;
-  captured.forEach(c => { newPieces[c.p][c.k] = null; });
-  return { newPieces, captured, enteredHome: finalRel >= TRACK_LEN };
+  return null;
 }
 
 function tryStart(pieces, owner, k) {
@@ -541,12 +613,19 @@ function nextTurnIndex(hands, from) {
 
 /* ============================== REACT APP ============================== */
 
+const CARD_ICON = { '4': '⇅', '7': '🔥', '11': '↩', '13': '↩', 'SWAP': '⇄', 'JOKER': '' };
 function Card({ card, onClick, disabled }) {
-  const cls = ['card', card.rank === 'JOKER' ? 'joker-card' : (RED_RANKS.indexOf(card.rank) !== -1 ? 'red-card' : 'blue-card'),
+  const isJoker = card.rank === 'JOKER';
+  const isSwap = card.rank === 'SWAP';
+  const cls = ['card', isJoker ? 'joker-card' : (RED_RANKS.indexOf(card.rank) !== -1 ? 'red-card' : 'blue-card'),
     disabled ? 'disabled' : ''].join(' ').trim();
+  const mainLabel = isJoker ? '?' : (isSwap ? '⇄' : card.rank);
   return (
     <div className={cls} onClick={disabled ? undefined : onClick}>
-      {card.rank === 'JOKER' ? '?' : (card.rank === 'SWAP' ? '⇄' : card.rank)}
+      <span className="card-corner card-corner-tl">{isJoker ? '?' : (isSwap ? '⇄' : card.rank)}</span>
+      <span className="card-main">{mainLabel}</span>
+      {CARD_ICON[card.rank] && <span className="card-icon">{CARD_ICON[card.rank]}</span>}
+      <span className="card-corner card-corner-br">{isJoker ? '?' : (isSwap ? '⇄' : card.rank)}</span>
     </div>
   );
 }
@@ -583,6 +662,15 @@ function Board({ pieces, activePlayer }) {
     }
   });
 
+  const turnRing = (() => {
+    const corner = edgeStart(activePlayer);
+    const base = lerp({ x: CX, y: CY }, corner, 1.14);
+    return <circle cx={base.x} cy={base.y} r={46} fill="none" stroke={COLOR_HEX[COLOR_KEYS[activePlayer]]}
+      strokeWidth="4" strokeDasharray="6 5" opacity="0.9">
+      <animateTransform attributeName="transform" type="rotate" from={`0 ${base.x} ${base.y}`} to={`360 ${base.x} ${base.y}`} dur="6s" repeatCount="indefinite" />
+    </circle>;
+  })();
+
   const pieceEls = [];
   pieces.forEach((arr, p) => {
     const ck = COLOR_KEYS[p];
@@ -601,8 +689,9 @@ function Board({ pieces, activePlayer }) {
   });
 
   const armLines = COLOR_KEYS.map((ck, ci) => {
-    const a = edgeStart(ci), b = { x: CX, y: CY };
-    return <line key={ck + 'arm'} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={COLOR_HEX[ck]} strokeWidth="10" strokeOpacity="0.28" />;
+    const a = edgeStart(ci), c = homeArmControlPoint(ci), b = { x: CX, y: CY };
+    return <path key={ck + 'arm'} d={`M ${a.x} ${a.y} Q ${c.x} ${c.y} ${b.x} ${b.y}`}
+      fill="none" stroke={COLOR_HEX[ck]} strokeWidth="11" strokeOpacity="0.3" strokeLinecap="round" />;
   });
   const outerFrame = `${SQ_MIN - 45},${SQ_MIN - 45} ${SQ_MAX + 45},${SQ_MIN - 45} ${SQ_MAX + 45},${SQ_MAX + 45} ${SQ_MIN - 45},${SQ_MAX + 45}`;
   const trackFrame = `${SQ_MIN},${SQ_MIN} ${SQ_MAX},${SQ_MIN} ${SQ_MAX},${SQ_MAX} ${SQ_MIN},${SQ_MAX}`;
@@ -615,6 +704,7 @@ function Board({ pieces, activePlayer }) {
       {trackCells}
       {homeCells}
       {kennelCells}
+      {turnRing}
       <rect x={CX - 55} y={CY - 55} width="110" height="110" fill="#0f2913" stroke={COLOR_HEX.green} strokeWidth="1"
         transform={`rotate(45 ${CX} ${CY})`} />
       <text x={CX} y={CY - 4} textAnchor="middle" fill="#e0b04a" fontSize="20" fontFamily="Georgia, serif" fontWeight="900">DOG</text>
@@ -808,19 +898,25 @@ function App() {
         <div className="side-panel">
           <div className="panel-box">
             <h3>Status</h3>
-            <div className="status-line">
-              {state.phase === 'gameover'
-                ? `Spiel beendet — Team ${state.winnerTeam === 0 ? 'Grün+Blau' : 'Gelb+Rot'} gewinnt!`
-                : state.phase === 'exchange'
-                  ? 'Kartentausch mit Partner läuft…'
-                  : <span>Am Zug: <span className="active-player" style={{ color: COLOR_HEX[COLOR_KEYS[state.turnIndex]] }}>{PLAYER_NAMES[state.turnIndex]}</span></span>}
-            </div>
-            {COLOR_KEYS.map((ck, p) => (
-              <div className="team-row" key={ck}>
-                <span><span className="swatch" style={{ background: COLOR_HEX[ck] }}></span>{PLAYER_NAMES[p]} (Team {teamOf(p) === 0 ? 'Grün/Blau' : 'Gelb/Rot'})</span>
-                <span>{teamFinishedCount(state.pieces, teamOf(p)) === 8 ? '✔' : `${state.pieces[p].filter(r => r != null && r >= TRACK_LEN).length}/4 im Ziel`}</span>
+            {state.phase === 'play' && (
+              <div className="turn-banner" style={{ background: COLOR_HEX[COLOR_KEYS[state.turnIndex]] }}>
+                <span className="turn-banner-dot"></span>
+                Am Zug: {PLAYER_NAMES[state.turnIndex]}{state.turnIndex === human ? ' — du bist dran!' : ''}
               </div>
-            ))}
+            )}
+            {state.phase === 'exchange' && (
+              <div className="status-line">Kartentausch mit Partner läuft…</div>
+            )}
+            {COLOR_KEYS.map((ck, p) => {
+              const finished = teamFinishedCount(state.pieces, teamOf(p));
+              const won = finished === 8;
+              return (
+                <div className={'team-row' + (p === state.turnIndex && state.phase === 'play' ? ' team-row-active' : '') + (won ? ' team-row-won' : '')} key={ck}>
+                  <span><span className="swatch" style={{ background: COLOR_HEX[ck] }}></span>{PLAYER_NAMES[p]} (Team {teamOf(p) === 0 ? 'Grün/Blau' : 'Gelb/Rot'})</span>
+                  <span>{won ? '🏆 Gewonnen!' : `${state.pieces[p].filter(r => r != null && r >= TRACK_LEN).length}/4 im Ziel`}</span>
+                </div>
+              );
+            })}
           </div>
 
           <div className="panel-box">
@@ -889,6 +985,16 @@ function App() {
               );
             })}
             <button className="btn secondary" onClick={cancelSeven}>Zurücksetzen</button>
+          </div>
+        </div>
+      )}
+
+      {state.phase === 'gameover' && (
+        <div className="gameover-overlay">
+          <div className="gameover-box">
+            <h2>🏆 Team {state.winnerTeam === 0 ? 'Grün + Blau' : 'Gelb + Rot'} gewinnt!</h2>
+            <p>Alle 8 Figuren des Teams sind im Ziel.</p>
+            <button className="btn" onClick={() => setState(dealRound(makeInitialState()))}>Neues Spiel</button>
           </div>
         </div>
       )}
